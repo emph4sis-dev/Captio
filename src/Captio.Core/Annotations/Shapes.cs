@@ -5,6 +5,7 @@ public enum ShapeKind
     Arrow,
     Rectangle,
     Ellipse,
+    Line,
 }
 
 public readonly record struct Bounds(double X, double Y, double Width, double Height);
@@ -28,11 +29,30 @@ public static class ShapeFactory
         return new Bounds(Math.Min(x1, x1 + dx), Math.Min(y1, y1 + dy), Math.Abs(dx), Math.Abs(dy));
     }
 
-    /// <param name="constrain">Shift held: square for rectangles, circle for ellipses.</param>
+    /// <summary>The end point snapped to the nearest multiple of 45°, keeping the drag length.</summary>
+    public static (double X, double Y) SnapTo45(double x1, double y1, double x2, double y2)
+    {
+        var dx = x2 - x1;
+        var dy = y2 - y1;
+        var length = Math.Sqrt(dx * dx + dy * dy);
+        if (length == 0) return (x2, y2);
+        var angle = Math.Round(Math.Atan2(dy, dx) / (Math.PI / 4)) * (Math.PI / 4);
+        // Round away floating noise so horizontal lines stay exactly horizontal.
+        return (Math.Round(x1 + Math.Cos(angle) * length, 6), Math.Round(y1 + Math.Sin(angle) * length, 6));
+    }
+
+    /// <param name="constrain">Shift held: square for rectangles, circle for ellipses, 45° steps for lines.</param>
     public static StrokedAnnotation Create(
         ShapeKind kind, double x1, double y1, double x2, double y2, bool constrain, uint argb, double thickness)
     {
-        if (kind == ShapeKind.Arrow) return new ArrowAnnotation(x1, y1, x2, y2, argb, thickness);
+        switch (kind)
+        {
+            case ShapeKind.Arrow:
+                return new ArrowAnnotation(x1, y1, x2, y2, argb, thickness);
+            case ShapeKind.Line:
+                var (ex, ey) = constrain ? SnapTo45(x1, y1, x2, y2) : (x2, y2);
+                return new LineAnnotation(x1, y1, ex, ey, argb, thickness);
+        }
 
         var b = DragBounds(x1, y1, x2, y2, constrain);
         return kind == ShapeKind.Rectangle
@@ -44,6 +64,8 @@ public static class ShapeFactory
     public static bool IsMeaningful(Annotation annotation, double minSize) => annotation switch
     {
         ArrowAnnotation a => a.Length >= minSize,
+        LineAnnotation l => l.Length >= minSize,
+        PencilAnnotation p => p.Points.Length >= 2 && p.PathLength >= minSize / 2,
         RectangleAnnotation r => r.Width >= minSize || r.Height >= minSize,
         EllipseAnnotation e => e.Width >= minSize || e.Height >= minSize,
         RedactionAnnotation r => r.Width >= 2 && r.Height >= 2,
@@ -52,10 +74,15 @@ public static class ShapeFactory
 
     public static Bounds BoundsOf(Annotation annotation) => annotation switch
     {
-        ArrowAnnotation a => new Bounds(Math.Min(a.X1, a.X2), Math.Min(a.Y1, a.Y2), Math.Abs(a.X2 - a.X1), Math.Abs(a.Y2 - a.Y1)),
+        ArrowAnnotation a => Span(a.X1, a.Y1, a.X2, a.Y2),
+        LineAnnotation l => Span(l.X1, l.Y1, l.X2, l.Y2),
+        PencilAnnotation p => p.Bounds,
         RectangleAnnotation r => new Bounds(r.X, r.Y, r.Width, r.Height),
         EllipseAnnotation e => new Bounds(e.X, e.Y, e.Width, e.Height),
         RedactionAnnotation r => new Bounds(r.X, r.Y, r.Width, r.Height),
         _ => default,
     };
+
+    private static Bounds Span(double x1, double y1, double x2, double y2) =>
+        new(Math.Min(x1, x2), Math.Min(y1, y2), Math.Abs(x2 - x1), Math.Abs(y2 - y1));
 }

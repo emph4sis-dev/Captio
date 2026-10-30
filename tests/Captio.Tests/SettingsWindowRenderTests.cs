@@ -46,41 +46,26 @@ public sealed class SettingsWindowRenderTests : IDisposable
         var screenshots = Directory.CreateDirectory(Path.Combine(_root, "Screenshots")).FullName;
         for (var i = 0; i < 3; i++) File.WriteAllBytes(Path.Combine(screenshots, $"Captura {i}.png"), []);
 
-        Exception? error = null;
         (int Width, int Height) size = default;
-        var thread = new Thread(() =>
+        UiThread.Run(() =>
         {
-            try
-            {
-                var app = new App();
-                app.InitializeComponent();
-                var services = new AppServices(
-                    new SettingsStore(Path.Combine(_root, "settings.json")), new FixedFolder(screenshots), new FakeLaunch(),
-                    Path.Combine(_root, "legacy"), new LibraryMigrator(Path.Combine(_root, "migration.json")), _ => { });
+            var services = new AppServices(
+                new SettingsStore(Path.Combine(_root, "settings.json")), new FixedFolder(screenshots), new FakeLaunch(),
+                Path.Combine(_root, "legacy"), new LibraryMigrator(Path.Combine(_root, "migration.json")), _ => { });
 
-                var window = new SettingsWindow(services, () => true)
-                {
-                    WindowStartupLocation = WindowStartupLocation.Manual,
-                    Left = -20000,
-                    Top = -20000,
-                    ShowActivated = false,
-                };
-                window.Show();
-                window.UpdateLayout();
-                size = Render(window, Environment.GetEnvironmentVariable("CAPTIO_RENDER_DIR"));
-                window.Close();
-                app.Shutdown();
-            }
-            catch (Exception e)
+            var window = new SettingsWindow(services, () => true)
             {
-                error = e;
-            }
+                WindowStartupLocation = WindowStartupLocation.Manual,
+                Left = -20000,
+                Top = -20000,
+                ShowActivated = false,
+            };
+            window.Show();
+            window.UpdateLayout();
+            size = Render(window, Environment.GetEnvironmentVariable("CAPTIO_RENDER_DIR"));
+            window.Close();
         });
-        thread.SetApartmentState(ApartmentState.STA);
-        thread.Start();
-        thread.Join();
 
-        if (error is not null) throw error;
         Assert.True(size.Width > 400 && size.Height > 300, $"rendered {size.Width}x{size.Height}");
     }
 

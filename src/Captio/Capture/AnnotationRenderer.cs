@@ -17,6 +17,12 @@ internal static class AnnotationRenderer
             case ArrowAnnotation arrow:
                 DrawArrow(dc, arrow);
                 break;
+            case LineAnnotation line:
+                dc.DrawLine(RoundPen(line), new Point(line.X1, line.Y1), new Point(line.X2, line.Y2));
+                break;
+            case PencilAnnotation pencil when !pencil.Points.IsDefaultOrEmpty:
+                DrawPencil(dc, pencil);
+                break;
             case RectangleAnnotation rect:
                 dc.DrawRectangle(null, OutlinePen(rect), new Rect(rect.X, rect.Y, rect.Width, rect.Height));
                 break;
@@ -37,6 +43,40 @@ internal static class AnnotationRenderer
         var pen = new Pen(brush, shape.Thickness) { LineJoin = PenLineJoin.Miter };
         pen.Freeze();
         return pen;
+    }
+
+    private static Pen RoundPen(StrokedAnnotation shape)
+    {
+        var brush = new SolidColorBrush(ToColor(shape.Argb));
+        brush.Freeze();
+        var pen = new Pen(brush, shape.Thickness)
+        {
+            StartLineCap = PenLineCap.Round,
+            EndLineCap = PenLineCap.Round,
+            LineJoin = PenLineJoin.Round,
+        };
+        pen.Freeze();
+        return pen;
+    }
+
+    private static void DrawPencil(DrawingContext dc, PencilAnnotation p)
+    {
+        var pen = RoundPen(p);
+        if (p.Points.Length == 1)
+        {
+            // A single click leaves a round dot the size of the stroke.
+            dc.DrawEllipse(pen.Brush, null, new Point(p.Points[0].X, p.Points[0].Y), p.Thickness / 2, p.Thickness / 2);
+            return;
+        }
+
+        var geometry = new StreamGeometry();
+        using (var ctx = geometry.Open())
+        {
+            ctx.BeginFigure(new Point(p.Points[0].X, p.Points[0].Y), isFilled: false, isClosed: false);
+            ctx.PolyLineTo(p.Points.Skip(1).Select(pt => new Point(pt.X, pt.Y)).ToList(), isStroked: true, isSmoothJoin: true);
+        }
+        geometry.Freeze();
+        dc.DrawGeometry(null, pen, geometry);
     }
 
     private static void DrawArrow(DrawingContext dc, ArrowAnnotation a)

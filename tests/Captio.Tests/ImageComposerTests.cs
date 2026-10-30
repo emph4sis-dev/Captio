@@ -162,4 +162,31 @@ public class ImageComposerTests
 
         Assert.All(px.Chunk(4), p => Assert.Equal(Black, p));
     }
+
+    [Fact]
+    public void Line_and_pencil_are_flattened_in_their_color()
+    {
+        var px = OnSta(() => Pixels(ImageComposer.Flatten(Monitor(255, 255, 255), new Int32Rect(0, 0, 40, 30),
+        [
+            new LineAnnotation(4, 6, 36, 6, 0xFFFF0000, 4),
+            new PencilAnnotation([new PointD(4, 20), new PointD(20, 24), new PointD(36, 20)], 0xFF0000FF, 4),
+        ]).Bitmap));
+
+        Assert.Equal(PureRed, At(px, 40, 20, 6));        // on the line
+        Assert.Equal(White, At(px, 40, 20, 12));         // between them
+        var onStroke = At(px, 40, 20, 24);
+        Assert.True(onStroke[0] > 200 && onStroke[2] < 60, "the pencil stroke is blue");
+    }
+
+    [Fact]
+    public void Redaction_hides_a_pencil_stroke_drawn_over_it()
+    {
+        var px = OnSta(() => Pixels(ImageComposer.Flatten(Monitor(255, 255, 255), new Int32Rect(0, 0, 40, 30),
+        [
+            new RedactionAnnotation(0, 0, 40, 30),
+            new PencilAnnotation([new PointD(2, 2), new PointD(38, 28)], 0xFF00FF00, 6),
+        ]).Bitmap));
+
+        Assert.All(px.Chunk(4), p => Assert.Equal(Black, p));
+    }
 }
