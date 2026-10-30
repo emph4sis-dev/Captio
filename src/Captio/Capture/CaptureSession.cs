@@ -3,7 +3,6 @@ using Captio.Core.Annotations;
 using Captio.Core.Delivery;
 using Captio.Core.Settings;
 using Captio.Core.Storage;
-using Captio.Upload;
 
 namespace Captio.Capture;
 
@@ -17,9 +16,7 @@ internal sealed class CaptureSession(AppServices services)
 
     public event EventHandler? Ended;
 
-    public bool ImgurAvailable => services.ImgurClientId is not null;
-
-    public Destination DefaultDestination => services.Settings.EffectiveDefaultDestination;
+    public Destination DefaultDestination => services.Settings.DefaultDestination;
 
     public void Start()
     {
@@ -57,7 +54,6 @@ internal sealed class CaptureSession(AppServices services)
     public void Deliver(OverlayWindow source, Destination destination)
     {
         if (source.Region is not { } region) return;
-        if (destination == Destination.Imgur && (!ImgurAvailable || !services.EnsureImgurConsent(source))) return;
 
         var image = ImageComposer.Flatten(source.Snapshot.Image, region, source.Document.Items);
         switch (destination)
@@ -67,12 +63,6 @@ internal sealed class CaptureSession(AppServices services)
                 break;
             case Destination.Save:
                 Save(source, image);
-                break;
-            case Destination.Imgur:
-                End();
-                var upload = new UploadWindow(services, image);
-                upload.Closed += (_, _) => Interop.MemoryRelief.ReleaseWhenIdle(upload.Dispatcher);
-                upload.Show();
                 break;
         }
     }

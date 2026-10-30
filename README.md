@@ -3,7 +3,7 @@
 Herramienta de captura de pantalla para Windows centrada en rapidez y privacidad: captura una región, señálala con flechas, rectángulos o elipses, censúrala con bloques negros, y decide tú dónde termina la imagen.
 
 - Sin cuentas, telemetría ni nube propia.
-- Sin actividad de red, salvo cuando pides subir una imagen a Imgur.
+- Sin ninguna actividad de red: todo ocurre en tu equipo.
 - Las censuras reemplazan los píxeles: la imagen final no tiene capas.
 
 > «Captio» es un nombre provisional.
@@ -20,7 +20,6 @@ Versión 0.2, en desarrollo. La especificación completa está en [docs/SPEC.md]
 | Selector compacto de 8 colores, recordado entre capturas | ✅ |
 | Barra de edición centrada en la selección: arriba, abajo, a la izquierda o a la derecha | ✅ |
 | Copiar (con copia guardada opcional), guardar en la carpeta de capturas | ✅ |
-| Subida anónima a Imgur con consentimiento, sin persistencia | ✅ |
 | Biblioteca sobre la carpeta de capturas (rápida con miles de imágenes): filtro, copiar, arrastrar, exportar, renombrar, borrar | ✅ |
 | Iniciar con Windows | ✅ |
 | Clips MP4 sin audio | ⏳ pendiente (oculto en la interfaz) |
@@ -34,7 +33,7 @@ Versión 0.2, en desarrollo. La especificación completa está en [docs/SPEC.md]
 | Menú de formas / panel de colores | clic en el botón, o `Mayús+F` / `C` |
 | Cuadrado o círculo perfecto mientras dibujas | mantener `Mayús` |
 | Deshacer / rehacer / eliminar anotación | `Ctrl+Z` / `Ctrl+Y` / `Supr` |
-| Copiar / guardar / subir a Imgur | `Ctrl+C` / `Ctrl+S` / `Ctrl+U` |
+| Copiar / guardar | `Ctrl+C` / `Ctrl+S` |
 | Destino predeterminado | `Enter` |
 | Cancelar sin conservar nada | `Ctrl+X` (también `Esc`) |
 
@@ -44,7 +43,7 @@ Si `ImpPant` abre la herramienta de recortes del sistema, desactiva en Windows *
 
 - **`Ctrl+S`** guarda un PNG aplanado directamente en la **carpeta de capturas**.
 - **`Ctrl+C`** copia la imagen al portapapeles. Si activas *Guardar automáticamente una copia al copiar*, Captio guarda también esa misma imagen en la carpeta de capturas, pero solo si la copia funcionó. Si el guardado falla, la imagen sigue en el portapapeles y verás un aviso.
-- La **carpeta de capturas** predeterminada es la de Windows: *Imágenes\Screenshots*, resuelta con `FOLDERID_Screenshots`. Así respeta OneDrive, las carpetas redirigidas y el idioma. Captio no crea ninguna subcarpeta propia. Puedes elegir otra en la sección *Captura y guardado* de Configuración; `Restablecer` vuelve a la de Windows.
+- La **carpeta de capturas** predeterminada es la de Windows: *Imágenes\Screenshots*, resuelta con `FOLDERID_Screenshots`. Así respeta OneDrive, las carpetas redirigidas y el idioma. Captio no crea ninguna subcarpeta propia. Puedes elegir otra en la sección *Guardado* de Configuración; *Volver a la de Windows* restablece la predeterminada.
 - La **biblioteca** es esa misma carpeta: lo que guardes, renombres o borres desde el Explorador también se ve en Captio.
 - Al **cambiar de carpeta**, Captio pregunta si quieres mover las capturas existentes. Las copia, verifica cada una y solo después borra los originales. Si algo falla, todo queda como estaba, también tras un corte de luz.
 
@@ -62,24 +61,12 @@ Captio está pensado para quedarse en la bandeja sin molestar: no usa CPU en rep
 
 ## Inicio automático
 
-En Configuración, sección *General*: *Iniciar Captio al iniciar sesión en Windows* (desactivado por defecto). Crea una entrada por usuario en `HKCU\Software\Microsoft\Windows\CurrentVersion\Run` y no necesita permisos de administrador. Captio arranca en la bandeja, sin abrir ventanas. Si desactivas la entrada desde el Administrador de tareas o la Configuración de Windows, Captio la muestra como desactivada.
+En Configuración, sección *Sistema*: *Iniciar con Windows* (desactivado por defecto). Crea una entrada por usuario en `HKCU\Software\Microsoft\Windows\CurrentVersion\Run` y no necesita permisos de administrador. Captio arranca en la bandeja, sin abrir ventanas. Si desactivas la entrada desde el Administrador de tareas o la Configuración de Windows, Captio la muestra como desactivada.
 
 Datos locales:
 
 - Configuración: `%APPDATA%\Captio\settings.json`
 - Diario de traslados en curso: `%LOCALAPPDATA%\Captio\migration.json` (solo existe durante un traslado)
-
-## Imgur
-
-Las subidas son anónimas y ocultas, **no privadas**: cualquiera con el enlace puede ver la imagen. Captio no guarda la imagen, el enlace ni el token de eliminación, y te pide aceptar este aviso antes de la primera subida.
-
-Solo se usa el `Client-ID` público de una aplicación registrada en Imgur; nunca un `Client Secret` ni OAuth. Se inyecta al compilar:
-
-```bash
-dotnet build -p:ImgurClientId=TU_CLIENT_ID
-```
-
-Para desarrollo también se puede usar la variable de entorno `CAPTIO_IMGUR_CLIENT_ID`. Sin Client-ID, el botón de Imgur aparece desactivado.
 
 ## Compilar
 
@@ -100,7 +87,7 @@ dotnet run --project src/Captio
 ## Estructura
 
 ```
-src/Captio.Core      Lógica sin interfaz: anotaciones y formas, censura, PNG, Imgur, carpeta de capturas,
+src/Captio.Core      Lógica sin interfaz: anotaciones y formas, censura, PNG, carpeta de capturas,
                      biblioteca y migración, inicio automático, posición de la barra, configuración
 src/Captio           App WPF: bandeja, atajos globales, overlay de captura, ventanas
 tests/               Pruebas de Captio.Core, del aplanado en WPF y del arranque en la bandeja

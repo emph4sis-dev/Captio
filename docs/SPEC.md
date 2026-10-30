@@ -10,8 +10,7 @@ Principios:
 
 - Windows 11 como primera plataforma. Código abierto.
 - Sin cuentas, telemetría ni nube propia.
-- Ninguna actividad de red salvo una subida solicitada por el usuario.
-- Imgur es un destino externo opcional, solo para imágenes.
+- Ninguna actividad de red: todo ocurre en el equipo del usuario.
 - Las capturas guardadas viven en una carpeta normal del usuario, por defecto la carpeta de capturas de Windows.
 
 ## 2. Estados de la aplicación
@@ -20,10 +19,7 @@ Principios:
 |---|---|---|
 | `Idle` | En la bandeja del sistema, sin ventanas visibles. | Atajo de imagen → `Selecting` |
 | `Selecting` | Pantalla congelada y atenuada; el usuario arrastra una región. | Región válida → `Editing`; `Esc` → `Idle` |
-| `Editing` | Región ajustable, barra de herramientas visible, anotaciones editables. | Copiar / Guardar → `Idle`; Subir → `Uploading`; `Ctrl+X` o `Esc` → `Idle` |
-| `Uploading` | Imagen aplanada en memoria, subida en curso, cancelable. | Éxito → `UploadDone`; error o cancelación → `UploadFailed` |
-| `UploadDone` | Se muestra el enlace con `Copiar enlace`, `Abrir`, `Cerrar`. | Cerrar → `Idle` (se descartan imagen, enlace y token) |
-| `UploadFailed` | Imagen en memoria con `Reintentar`, `Copiar`, `Guardar`, `Descartar`. | Reintentar → `Uploading`; Guardar → `Idle`; Descartar o cerrar → `Idle` |
+| `Editing` | Región ajustable, barra de herramientas visible, anotaciones editables. | Copiar / Guardar → `Idle`; `Ctrl+X` o `Esc` → `Idle` |
 
 Cancelar (`Ctrl+X` o `Esc`) en `Selecting` o `Editing` nunca deja archivos ni entradas en la biblioteca.
 
@@ -40,7 +36,7 @@ La grabación de clips (§9) todavía no existe y no aparece en ningún menú, a
    - **Censurar** (`R`): rectángulo negro sólido.
    - **Color** (`C`): panel con ocho colores.
    - Deshacer (`Ctrl+Z`), rehacer (`Ctrl+Y`), eliminar anotación seleccionada (`Supr`).
-5. Destinos: Copiar (`Ctrl+C`), Guardar (`Ctrl+S`), Subir a Imgur (`Ctrl+U`). `Enter` ejecuta el destino predeterminado. Cancelar: `Ctrl+X` o `Esc`.
+5. Destinos: Copiar (`Ctrl+C`) y Guardar (`Ctrl+S`). `Enter` ejecuta el destino predeterminado. Cancelar: `Ctrl+X` o `Esc`.
 
 ### 3.1 Formas
 
@@ -68,9 +64,9 @@ Métrica: la superficie de selección aparece en menos de 200 ms tras el atajo, 
 
 ## 4. Barra de edición
 
-Orden: Seleccionar · Forma (abre su menú) · Censurar · Color (abre su panel) │ Deshacer · Rehacer · Eliminar │ Copiar · Guardar · Imgur · Cancelar.
+Orden: Seleccionar · Forma (abre su menú) · Censurar · Color (abre su panel) │ Deshacer · Rehacer · Eliminar │ Copiar · Guardar · Cancelar.
 
-- **Orientación**: preferencia persistente con cuatro valores: Arriba, Abajo, Izquierda y Derecha (la predeterminada). Con Izquierda o Derecha la barra es vertical y solo muestra iconos con tooltip. Con Arriba o Abajo es horizontal y el botón de Imgur muestra la etiqueta «Imgur».
+- **Orientación**: preferencia persistente con cuatro valores: Arriba, Abajo, Izquierda y Derecha (la predeterminada). Con Izquierda o Derecha la barra es vertical; con Arriba o Abajo, horizontal. Siempre muestra iconos con tooltip.
 - **Posición**:
   1. Fuera de la selección, en el lado preferido y centrada respecto a ella: centrada en vertical si está a la izquierda o a la derecha, y en horizontal si está arriba o abajo. Si centrada se saldría de la pantalla, se desplaza lo justo para caber.
   2. Si no cabe, en el lado opuesto.
@@ -79,7 +75,7 @@ Orden: Seleccionar · Forma (abre su menú) · Censurar · Color (abre su panel)
 - La posición se calcula en DIP a partir de la región en píxeles físicos y de la escala del monitor, así que se comporta igual en monitores con distinta escala.
 - Cambiar la orientación no modifica la región ni las anotaciones.
 - Tamaño compacto: botones de 28 DIP (icono de 16 DIP), 2 DIP entre botones solo en la dirección de la barra y 4 DIP de margen interior. La barra vertical mide unos 38 DIP de ancho.
-- Los botones que no están disponibles en un momento dado (deshacer, rehacer, eliminar, Imgur sin Client-ID) siguen en su sitio y aparecen desactivados: la barra no cambia de tamaño.
+- Los botones que no están disponibles en un momento dado (deshacer, rehacer, eliminar) siguen en su sitio y aparecen desactivados: la barra no cambia de tamaño.
 
 ## 5. Censura segura
 
@@ -101,45 +97,11 @@ Casos:
 
 - Si la copia falla, el editor sigue abierto y no se guarda nada.
 - Si la copia funciona pero el guardado falla, el portapapeles se conserva, el editor se cierra y una notificación avisa de que la imagen se copió pero no se pudo guardar.
-- La opción está desactivada por defecto y nunca sube nada a Imgur.
+- La opción está desactivada por defecto.
 
 ### 6.2 Guardar
 
 `Ctrl+S` escribe el PNG aplanado directamente en la carpeta de capturas (§7). Si la carpeta no se puede usar, se explica el motivo, se ofrece elegir otra y el editor sigue abierto. Nunca se guarda en otra ubicación sin preguntar.
-
-### 6.3 Subir a Imgur
-
-1. Aplanar y aplicar censuras.
-2. Codificar en memoria; ningún archivo temporal.
-3. `POST` por HTTPS a la API oficial, cabecera `Authorization: Client-ID <id>`.
-4. Mostrar el enlace resultante con `Copiar enlace`, `Abrir`, `Cerrar`.
-5. El enlace no se copia automáticamente.
-6. Al cerrar se descartan imagen, enlace y token de eliminación.
-7. No se crea ningún archivo, entrada en la biblioteca, miniatura ni registro.
-
-Consentimiento: antes del primer uso se muestra este texto y el usuario debe aceptarlo de forma expresa:
-
-> Esta imagen se enviará a Imgur. No aparecerá públicamente en su comunidad, pero cualquiera con el enlace podrá verla. Captio no conservará el archivo, el enlace ni la clave necesaria para eliminarlo posteriormente.
-
-El aviso puede consultarse de nuevo desde Configuración. Solo tras aceptarlo se puede elegir Imgur como destino predeterminado.
-
-Restricciones técnicas:
-
-- Solo `Client-ID`; nunca `Client Secret`, OAuth ni cuentas.
-- No se almacenan URL, identificador ni `deletehash`.
-- Enlaces y tokens no aparecen en logs ni informes de error.
-- Solo imágenes.
-- No se promete permanencia del enlace.
-- La interfaz advierte que Imgur puede comprimir o convertir imágenes grandes.
-- Los límites de uso se leen de la respuesta del servicio; no hay cifras fijas en el código.
-
-Fallos:
-
-- La imagen permanece en memoria; se ofrecen `Reintentar`, `Copiar`, `Guardar`, `Descartar`.
-- Nunca se guarda automáticamente como respaldo.
-- Cerrar la ventana o la aplicación descarta la imagen.
-- Un límite de uso muestra un mensaje claro, sin reintentos automáticos.
-- La subida en curso se puede cancelar.
 
 ## 7. Carpeta de capturas y biblioteca
 
@@ -150,7 +112,7 @@ Fallos:
 - Si la carpeta todavía no existe, se le pide a Windows que la cree (`KF_FLAG_CREATE`) en el momento de guardar. Solo se crea esa carpeta.
 - Si Windows no puede resolverla o no es escribible, se informa del problema y se ofrece elegir otra. No hay ninguna ubicación de reserva silenciosa.
 - **Personalizada**: se elige con el selector de carpetas nativo. Antes de aceptarla se comprueba que la ruta es completa, que la carpeta existe y que se puede escribir en ella. Una carpeta personalizada nunca se crea.
-- `Restablecer` vuelve a `FOLDERID_Screenshots`. Elegir esa misma carpeta con el selector equivale a restablecer.
+- *Volver a la de Windows* restablece `FOLDERID_Screenshots`. Elegir esa misma carpeta con el selector equivale a restablecer.
 
 ### 7.2 Biblioteca
 
@@ -205,11 +167,22 @@ La grabación de clips MP4 sin audio está planificada, pero no implementada. Ha
 
 ## 10. Configuración
 
-Una sola página desplazable, con tres secciones en tarjetas y en este orden. Cada cambio se aplica al momento (solo hay un botón «Cerrar»):
+Una sola página. La ventana se ajusta a su contenido y solo muestra una barra de desplazamiento si la pantalla es más baja. Cada cambio se aplica al momento: el pie confirma «Guardado» y hay un único botón «Cerrar».
 
-- **General**: iniciar con Windows y atajo de captura de imagen.
-- **Captura y guardado**: destino de `Enter` (Copiar, Guardar o Imgur), guardar una copia al copiar, carpeta de capturas (`Elegir…`, `Restablecer`, `Abrir carpeta`) y orientación de la barra con cuatro diagramas.
-- **Imgur**: disponibilidad, aviso de privacidad y retirar el consentimiento.
+Distribución, en el orden en que se usa Captio (capturar → editar → guardar → sistema). Cada grupo es un solo panel dividido por filas: título y descripción a la izquierda, control a la derecha, como en Configuración de Windows 11.
+
+- **Encabezado**: la marca de Captio, «Configuración» y la versión.
+- **Captura**
+  - *Atajo de captura*: se muestra como una tecla. Al pulsarla espera la nueva combinación (`Esc` cancela). Si otro programa ya la usa, se mantiene la anterior y la fila explica por qué.
+  - *Al pulsar Enter*: selector segmentado Copiar / Guardar.
+  - *Barra de edición*: cuatro mosaicos que dibujan la selección y la barra en cada lado.
+- **Guardado**
+  - *Carpeta de capturas*: cuántas imágenes hay y la ruta (recortada, con la ruta completa en el tooltip); `Elegir…` y un botón para abrir la carpeta. Solo cuando la carpeta no es la de Windows aparece una fila con *Volver a la de Windows*, que para una biblioteca de la versión 0.1 dice *Moverlas a la de Windows*.
+  - *Guardar también al copiar*: interruptor.
+- **Sistema**
+  - *Iniciar con Windows*: interruptor que refleja el estado real del sistema.
+
+Los controles usan los colores del tema de Windows (claro u oscuro). Las explicaciones de uso solo aparecen cuando hacen falta: al grabar un atajo o ante un problema.
 
 Archivo `%APPDATA%\Captio\settings.json`, escrito de forma atómica:
 
@@ -218,7 +191,6 @@ Archivo `%APPDATA%\Captio\settings.json`, escrito de forma atómica:
 | `ImageHotkey` | `ImpPant` |
 | `ClipHotkey` | `Mayús+ImpPant` (reservado, sin usar) |
 | `DefaultDestination` | `Copy` |
-| `ImgurConsentAccepted` | `false` |
 | `LaunchAtLogin` | `false` (última petición; el sistema manda) |
 | `CopyAlsoSaves` | `false` |
 | `CaptureFolder` | `null` = `FOLDERID_Screenshots` |
@@ -229,16 +201,16 @@ Archivo `%APPDATA%\Captio\settings.json`, escrito de forma atómica:
 
 - Las claves que faltan toman su valor predeterminado.
 - Los valores fuera de rango se normalizan.
-- Un archivo dañado hace que se usen todos los predeterminados, sin impedir el inicio.
+- Un valor que esta versión no reconoce (por ejemplo un destino eliminado) vuelve a su predeterminado sin perder el resto. Un archivo dañado hace que se usen todos los predeterminados, sin impedir el inicio.
 - Las rutas relativas no se guardan nunca.
-- La configuración no contiene datos de subidas.
+- La configuración solo guarda preferencias: ningún dato de capturas concretas.
 
 ## 11. Rendimiento y consumo
 
 Captio pasa casi todo el tiempo en la bandeja y debe ser ligero:
 
 - **En reposo:** sin temporizadores ni sondeos, con 0 ms de CPU medidos en 10 s. Usa una sola tarea de GC, sin hilo de recolección en segundo plano.
-- **Al volver a la bandeja:** tras cada captura y al cerrar Biblioteca, Configuración o Subida, se compacta la memoria y se recorta el conjunto de trabajo cuando la interfaz queda libre. Medido: unos 32 MB tras iniciar o tras capturar, frente a unos 125 MB con la captura abierta.
+- **Al volver a la bandeja:** tras cada captura y al cerrar Biblioteca o Configuración, se compacta la memoria y se recorta el conjunto de trabajo cuando la interfaz queda libre. Medido: unos 32 MB tras iniciar o tras capturar, frente a unos 125 MB con la captura abierta.
 - **Copia de pantalla:** `BitBlt` sin `CAPTUREBLT`, porque el compositor ya incluye las ventanas superpuestas y esa opción ralentiza la copia (sobre todo con juegos DirectX) y hace parpadear el cursor. Medido en 3000×1920: 43,5 ms con `CAPTUREBLT` y 38,3 ms sin ella.
 - **Juegos en pantalla completa exclusiva:** mostrar la superficie de selección obliga a Windows a sacar el juego de ese modo, lo que puede tardar segundos. Es una limitación del sistema; con «ventana sin bordes» la captura es inmediata.
 - **Pendiente:** unos 155 MB de memoria privada reservada (no activa) persisten tras la primera captura. No es memoria del recolector de .NET; es probable que sea una reserva nativa de WPF o del controlador gráfico. Una optimización futura podría capturar con DXGI Desktop Duplication y revisar esa reserva.
@@ -248,8 +220,6 @@ Captio pasa casi todo el tiempo en la bandeja y debe ser ligero:
 - Región de tamaño cero o menor a 2 px: se ignora y se vuelve a `Selecting`.
 - Varios monitores con distinto escalado: cada monitor se congela por separado y la región se limita a un monitor.
 - El atajo ya está en uso: se avisa y se mantiene el anterior.
-- Sin `Client-ID` configurado en la compilación: el botón de Imgur aparece deshabilitado con una explicación.
-- Sin conexión, tiempo agotado, respuesta 429 o 5xx: estado `UploadFailed` con un mensaje específico.
 - Segunda instancia de la aplicación: se cierra sin abrir ventanas y la primera sigue activa.
 - Carpeta de capturas borrada, desconectada o sin permisos: guardar avisa, ofrece elegir otra y el editor sigue abierto.
 - Un archivo que no es un PNG válido no aparece en la biblioteca.
@@ -258,14 +228,9 @@ Captio pasa casi todo el tiempo en la bandeja y debe ser ligero:
 ## 13. Criterios de aceptación
 
 - [x] La selección aparece en menos de 200 ms en el equipo de prueba (medido: 191 ms la primera vez tras iniciar, 60–80 ms después).
-- [x] Copiar o subir requiere como máximo una acción tras editar.
-- [x] No hay tráfico de red salvo durante una subida solicitada.
-- [x] Nunca se sube una captura sin acción explícita o preferencia consentida.
-- [x] La censura reemplaza los píxeles antes de copiar, guardar o transmitir.
-- [x] Imgur recibe solo la versión aplanada.
-- [x] El modo Imgur no crea archivos, miniaturas ni registros locales.
-- [x] URL y `deletehash` desaparecen al cerrar el resultado.
-- [x] Un fallo de red no provoca un guardado automático.
+- [x] Copiar o guardar requiere como máximo una acción tras editar.
+- [x] Captio no genera ningún tráfico de red.
+- [x] La censura reemplaza los píxeles antes de copiar o guardar.
 - [x] Cancelar no deja archivos ni entradas en la biblioteca.
 - [x] La biblioteca persiste tras reiniciar.
 - [x] La carpeta predeterminada es `FOLDERID_Screenshots`; no se crea ninguna carpeta `Captio` dentro de Imágenes.

@@ -8,7 +8,6 @@ public enum Destination
 {
     Copy,
     Save,
-    Imgur,
 }
 
 /// <summary>Preferred side of the selection for the editing toolbar.</summary>
@@ -49,8 +48,6 @@ public sealed record AppSettings
 
     public Destination DefaultDestination { get; init; } = Destination.Copy;
 
-    public bool ImgurConsentAccepted { get; init; }
-
     /// <summary>Last state the user asked for. The system's Run entry is authoritative.</summary>
     public bool LaunchAtLogin { get; init; }
 
@@ -69,11 +66,6 @@ public sealed record AppSettings
 
     /// <summary>Kept for compatibility and a future Advanced section; see <see cref="StrokeThickness"/>.</summary>
     public double ArrowThickness { get; init; } = DefaultStrokeThickness;
-
-    /// <summary>The destination Enter triggers. Imgur is never used without prior consent.</summary>
-    [JsonIgnore]
-    public Destination EffectiveDefaultDestination =>
-        DefaultDestination == Destination.Imgur && !ImgurConsentAccepted ? Destination.Copy : DefaultDestination;
 
     [JsonIgnore]
     public double StrokeThickness => StrokeThicknessCustomizable ? ArrowThickness : DefaultStrokeThickness;
@@ -115,7 +107,7 @@ public sealed class SettingsStore(string path)
     private static readonly JsonSerializerOptions JsonOptions = new()
     {
         WriteIndented = true,
-        Converters = { new JsonStringEnumConverter() },
+        Converters = { new LenientEnumConverterFactory() },
     };
 
     public string Path { get; } = path;
@@ -143,5 +135,32 @@ public sealed class SettingsStore(string path)
         var tempPath = Path + ".tmp";
         File.WriteAllText(tempPath, JsonSerializer.Serialize(settings.Normalize(), JsonOptions));
         File.Move(tempPath, Path, overwrite: true);
+    }
+}
+
+/// <summary>
+/// Enums as names. A name this version no longer knows (for example a removed
+/// destination) becomes an undefined value that <see cref="AppSettings.Normalize"/>
+/// replaces with the default, instead of discarding the whole file.
+/// </summary>
+internal sealed class LenientEnumConverterFactory : JsonConverterFactory
+{
+    public override bool CanConvert(Type typeToConvert) => typeToConvert.IsEnum;
+
+    public override JsonConverter CreateConverter(Type typeToConvert, JsonSerializerOptions options) =>
+        (JsonConverter)Activator.CreateInstance(typeof(LenientEnumConverter<>).MakeGenericType(typeToConvert))!;
+
+    private sealed class LenientEnumConverter<T> : JsonConverter<T> where T : struct, Enum
+    {
+        private static readonly T Unknown = (T)Enum.ToObject(typeof(T), -1);
+
+        public override T Read(ref Utf8JsonReader reader, Type typeToConvert, JsonSerializerOptions options) => reader.TokenType switch
+        {
+            JsonTokenType.String => Enum.TryParse<T>(reader.GetString(), ignoreCase: true, out var value) && Enum.IsDefined(value) ? value : Unknown,
+            JsonTokenType.Number when reader.TryGetInt32(out var number) => (T)Enum.ToObject(typeof(T), number),
+            _ => throw new JsonException($"Expected a {typeof(T).Name} name."),
+        };
+
+        public override void Write(Utf8JsonWriter writer, T value, JsonSerializerOptions options) => writer.WriteStringValue(value.ToString());
     }
 }
