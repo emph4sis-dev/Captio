@@ -1,0 +1,5 @@
+blank_issues_enabled: false
+contact_links:
+  - name: Informar de una vulnerabilidad
+    url: https://github.com/emph4sis-dev/Captio/security/advisories/new
+    about: De forma privada, nunca en un issue público.

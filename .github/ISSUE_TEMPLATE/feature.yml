@@ -1,0 +1,27 @@
+name: Solicitud de función
+description: Propón una mejora para Captio.
+labels: [mejora]
+body:
+  - type: markdown
+    attributes:
+      value: |
+        Captio prioriza la rapidez, la privacidad y funcionar sin conexión. Las propuestas que requieren red, cuentas o telemetría no encajan con el proyecto.
+  - type: textarea
+    id: problem
+    attributes:
+      label: Qué problema resuelve
+      description: Describe la situación en la que la echas en falta.
+    validations:
+      required: true
+  - type: textarea
+    id: proposal
+    attributes:
+      label: Propuesta
+      description: Cómo te imaginas que funcione.
+    validations:
+      required: true
+  - type: textarea
+    id: alternatives
+    attributes:
+      label: Alternativas
+      description: Otras formas de resolverlo que hayas considerado.
