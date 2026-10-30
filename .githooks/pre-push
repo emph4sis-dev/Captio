@@ -1,0 +1,23 @@
+#!/bin/sh
+# Blocks any push that would publish a forbidden term (see scripts/check-forbidden-terms.ps1).
+# Enable once per clone: git config core.hooksPath .githooks
+
+repo=$(git rev-parse --show-toplevel)
+zero=0000000000000000000000000000000000000000
+commits=""
+
+# stdin: <local ref> <local sha> <remote ref> <remote sha>
+while read -r local_ref local_sha remote_ref remote_sha; do
+    [ "$local_sha" = "$zero" ] && continue  # branch deletion
+    commits="$commits,$local_sha"
+done
+
+set -- -NoProfile -ExecutionPolicy Bypass -File "$repo/scripts/check-forbidden-terms.ps1"
+[ -n "$commits" ] && set -- "$@" -Commits "${commits#,}"
+
+if ! powershell.exe "$@"; then
+    echo >&2
+    echo "Push bloqueado: el repositorio contiene términos prohibidos o la lista no está disponible." >&2
+    echo "Corrige las ubicaciones indicadas y vuelve a intentarlo." >&2
+    exit 1
+fi

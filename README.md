@@ -81,7 +81,15 @@ scripts/             Comprobaciones del repositorio
 
 ## Contribuir
 
-Antes de cada entrega, ejecuta la comprobación de términos prohibidos. La lista de términos vive fuera del repositorio (por defecto en `%USERPROFILE%\.captio-private\forbidden-terms.txt`) y nunca debe añadirse a él:
+El repositorio no debe mencionar productos usados como referencia. Una lista de términos prohibidos, que vive fuera del repositorio (por defecto en `%USERPROFILE%\.captio-private\forbidden-terms.txt`) y nunca debe añadirse a él, se comprueba en cada `git push`: el hook `pre-push` revisa el árbol de trabajo, el contenido de los commits que se publican y sus mensajes, y bloquea el push si encuentra algo o si la lista no existe.
+
+Actívalo una vez por clon:
+
+```bash
+git config core.hooksPath .githooks
+```
+
+También se puede ejecutar a mano:
 
 ```bash
 powershell -ExecutionPolicy Bypass -File scripts/check-forbidden-terms.ps1
