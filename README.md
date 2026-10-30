@@ -15,7 +15,7 @@ Versión 0.2, en desarrollo. La especificación completa está en [docs/SPEC.md]
 | Función | Estado |
 |---|---|
 | Captura de región con pantalla congelada (multimonitor, PerMonitorV2) | ✅ |
-| Formas: flecha, rectángulo y elipse sin relleno; `Mayús` para cuadrado o círculo | ✅ |
+| Lápiz a mano alzada y formas: flecha, línea, rectángulo y elipse sin relleno; `Mayús` para línea recta a 45°, cuadrado o círculo | ✅ |
 | Censura sólida, deshacer, rehacer, eliminar | ✅ |
 | Selector compacto de 8 colores, recordado entre capturas | ✅ |
 | Barra de edición centrada en la selección: arriba, abajo, a la izquierda o a la derecha | ✅ |
@@ -29,9 +29,9 @@ Versión 0.2, en desarrollo. La especificación completa está en [docs/SPEC.md]
 | Acción | Atajo |
 |---|---|
 | Capturar imagen | `ImpPant` (configurable) |
-| Seleccionar / forma actual / censurar | `V` / `F` / `R` |
+| Seleccionar / lápiz / forma actual / censurar | `V` / `P` / `F` / `R` |
 | Menú de formas / panel de colores | clic en el botón, o `Mayús+F` / `C` |
-| Cuadrado o círculo perfecto mientras dibujas | mantener `Mayús` |
+| Línea a 45°, cuadrado o círculo perfecto mientras dibujas | mantener `Mayús` |
 | Deshacer / rehacer / eliminar anotación | `Ctrl+Z` / `Ctrl+Y` / `Supr` |
 | Copiar / guardar | `Ctrl+C` / `Ctrl+S` |
 | Destino predeterminado | `Enter` |

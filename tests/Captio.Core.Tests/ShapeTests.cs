@@ -143,4 +143,91 @@ public class ShapeTests
     {
         Assert.Equal(expected, ShapePalette.Nearest(old));
     }
+
+    [Theory]
+    [InlineData(100, 4, 100.079968, 0)]  // almost horizontal → horizontal, for underlining (length kept)
+    [InlineData(4, 90, 0, 90.088845)]    // almost vertical → vertical
+    [InlineData(70, 64, 67.067131, 67.067131)] // near the diagonal → exactly 45°
+    [InlineData(-80, 6, -80.224684, 0)] // leftwards stays leftwards
+    public void Shift_snaps_lines_to_45_degree_steps(double dx, double dy, double ex, double ey)
+    {
+        var line = Assert.IsType<LineAnnotation>(ShapeFactory.Create(ShapeKind.Line, 10, 10, 10 + dx, 10 + dy, constrain: true, Red, 6));
+
+        Assert.Equal((10.0, 10.0), (line.X1, line.Y1));
+        Assert.Equal(10 + ex, line.X2, precision: 4);
+        Assert.Equal(10 + ey, line.Y2, precision: 4);
+    }
+
+    [Fact]
+    public void Line_without_shift_follows_the_drag_and_uses_the_color()
+    {
+        var line = Assert.IsType<LineAnnotation>(ShapeFactory.Create(ShapeKind.Line, 0, 0, 30, 7, constrain: false, 0xFF00FFFF, 6));
+        Assert.Equal((30.0, 7.0), (line.X2, line.Y2));
+        Assert.Equal(0xFF00FFFFu, line.Argb);
+    }
+
+    [Fact]
+    public void Line_hit_test_follows_the_stroke()
+    {
+        var line = new LineAnnotation(0, 50, 200, 50, Red, 6);
+
+        Assert.True(line.HitTest(100, 53, 2));
+        Assert.True(line.HitTest(203, 50, 2));  // round end
+        Assert.False(line.HitTest(100, 60, 2));
+        Assert.Equal(new LineAnnotation(5, 45, 205, 45, Red, 6), line.Offset(5, -5));
+    }
+
+    private static PencilAnnotation Stroke(params (double X, double Y)[] points) =>
+        new([.. points.Select(p => new PointD(p.X, p.Y))], Red, 6);
+
+    [Fact]
+    public void Pencil_hit_test_is_on_the_stroke_not_the_enclosed_area()
+    {
+        // A closed loop drawn by hand around (50, 50).
+        var loop = Stroke((0, 0), (100, 0), (100, 100), (0, 100), (0, 0));
+
+        Assert.True(loop.HitTest(50, 2, 2));
+        Assert.True(loop.HitTest(101, 50, 2));
+        Assert.False(loop.HitTest(50, 50, 2)); // inside the loop
+        Assert.False(loop.HitTest(150, 50, 2));
+    }
+
+    [Fact]
+    public void Pencil_moves_bounds_and_length()
+    {
+        var stroke = Stroke((10, 10), (40, 10), (40, 50));
+
+        Assert.Equal(70, stroke.PathLength, precision: 6);
+        Assert.Equal(new Bounds(10, 10, 30, 40), ShapeFactory.BoundsOf(stroke));
+        var moved = Assert.IsType<PencilAnnotation>(stroke.Offset(5, 5));
+        Assert.Equal(new[] { new PointD(15, 15), new PointD(45, 15), new PointD(45, 55) }, moved.Points.ToArray());
+    }
+
+    [Fact]
+    public void A_click_with_the_pencil_is_not_a_stroke()
+    {
+        Assert.False(ShapeFactory.IsMeaningful(Stroke((5, 5)), 4));
+        Assert.False(ShapeFactory.IsMeaningful(Stroke((5, 5), (5.5, 5)), 4));
+        Assert.True(ShapeFactory.IsMeaningful(Stroke((5, 5), (9, 5)), 4));
+    }
+
+    [Fact]
+    public void Pencil_and_line_work_with_selection_undo_and_redo()
+    {
+        var doc = new AnnotationDocument();
+        var line = new LineAnnotation(0, 200, 100, 200, Red, 6);
+        var stroke = Stroke((0, 0), (50, 50));
+        doc.Add(line);
+        doc.Add(stroke);
+
+        Assert.Equal(1, doc.HitTest(25, 25, 3));
+        Assert.Equal(0, doc.HitTest(50, 202, 3));
+        doc.Replace(1, stroke.Offset(10, 0));
+        doc.RemoveAt(0);
+        doc.Undo();
+        doc.Undo();
+        Assert.Equal([line, stroke], doc.Items);
+        doc.Redo();
+        Assert.Equal(new PointD(10, 0), Assert.IsType<PencilAnnotation>(doc.Items[1]).Points[0]);
+    }
 }

@@ -16,6 +16,7 @@ namespace Captio.Capture;
 internal enum Tool
 {
     Select,
+    Pencil,
     Shape,
     Redact,
 }
@@ -31,6 +32,7 @@ internal sealed class OverlayWindow : Window
     private static readonly (ShapeKind Kind, string Name)[] ShapeNames =
     [
         (ShapeKind.Arrow, "Flecha"),
+        (ShapeKind.Line, "Línea"),
         (ShapeKind.Rectangle, "Rectángulo"),
         (ShapeKind.Ellipse, "Elipse"),
     ];
@@ -38,7 +40,9 @@ internal sealed class OverlayWindow : Window
     [Flags]
     private enum Edge { None = 0, Left = 1, Top = 2, Right = 4, Bottom = 8 }
 
-    private enum Drag { None, NewRegion, MoveRegion, ResizeRegion, DrawShape, DrawRedaction, MoveAnnotation }
+    private enum Drag { None, NewRegion, MoveRegion, ResizeRegion, DrawShape, DrawPencil, DrawRedaction, MoveAnnotation }
+
+    private readonly List<PointD> _pencilPoints = [];
 
     private readonly CaptureSession _session;
     private readonly Surface _surface;
@@ -120,6 +124,9 @@ internal sealed class OverlayWindow : Window
     public AnnotationDocument Document { get; } = new();
 
     public Int32Rect? Region => _region;
+
+    /// <summary>The editing toolbar, exposed so tests can render it.</summary>
+    internal FrameworkElement Toolbar => _toolbar;
 
     private double Scale => VisualTreeHelper.GetDpi(this).DpiScaleX;
 
@@ -207,7 +214,17 @@ internal sealed class OverlayWindow : Window
         }
         else if (inside)
         {
-            _drag = _tool == Tool.Shape ? Drag.DrawShape : Drag.DrawRedaction;
+            _drag = _tool switch
+            {
+                Tool.Shape => Drag.DrawShape,
+                Tool.Pencil => Drag.DrawPencil,
+                _ => Drag.DrawRedaction,
+            };
+            if (_drag == Drag.DrawPencil)
+            {
+                _pencilPoints.Clear();
+                _pencilPoints.Add(new PointD(p.X, p.Y));
+            }
         }
         else
         {
@@ -265,6 +282,14 @@ internal sealed class OverlayWindow : Window
                 var constrain = Keyboard.Modifiers.HasFlag(ModifierKeys.Shift);
                 _preview = ShapeFactory.Create(_shape, _dragStart.X, _dragStart.Y, p.X, p.Y, constrain, _color, _strokeDip * Scale);
                 break;
+            case Drag.DrawPencil:
+                // Skip points closer than ~1.5 DIP: smoother strokes and far fewer points.
+                var last = _pencilPoints[^1];
+                var step = 1.5 * Scale;
+                if ((p.X - last.X) * (p.X - last.X) + (p.Y - last.Y) * (p.Y - last.Y) >= step * step)
+                    _pencilPoints.Add(new PointD(p.X, p.Y));
+                _preview = new PencilAnnotation([.. _pencilPoints], _color, _strokeDip * Scale);
+                break;
             case Drag.DrawRedaction:
                 _preview = RedactionAnnotation.FromCorners(_dragStart.X, _dragStart.Y, p.X, p.Y);
                 break;
@@ -289,7 +314,7 @@ internal sealed class OverlayWindow : Window
             case Drag.NewRegion when _region is { } r && (r.Width < MinRegionSize || r.Height < MinRegionSize):
                 _region = null;
                 break;
-            case Drag.DrawShape or Drag.DrawRedaction when preview is not null && ShapeFactory.IsMeaningful(preview, 4 * Scale):
+            case Drag.DrawShape or Drag.DrawPencil or Drag.DrawRedaction when preview is not null && ShapeFactory.IsMeaningful(preview, 4 * Scale):
                 Document.Add(preview);
                 break;
             case Drag.MoveAnnotation when preview is not null && preview != Document.Items[selected]:
@@ -347,6 +372,7 @@ internal sealed class OverlayWindow : Window
             case Key.F when !ctrl && shift: OpenPopup(_shapePopup); break;
             case Key.F when !ctrl: SetTool(Tool.Shape); break;
             case Key.R when !ctrl: SetTool(Tool.Redact); break;
+            case Key.P when !ctrl: SetTool(Tool.Pencil); break;
             case Key.C when !ctrl: OpenPopup(_colorPopup); break;
             case Key.LeftShift or Key.RightShift when _drag == Drag.DrawShape: UpdateDrag(_lastPoint); break;
             default: handled = false; break;
@@ -441,6 +467,7 @@ internal sealed class OverlayWindow : Window
             Edge.Left | Edge.Top or Edge.Right | Edge.Bottom => Cursors.SizeNWSE,
             Edge.Right | Edge.Top or Edge.Left | Edge.Bottom => Cursors.SizeNESW,
             _ when _tool == Tool.Select && Contains(r, p) => Cursors.SizeAll,
+            _ when _tool == Tool.Pencil && Contains(r, p) => Cursors.Pen,
             _ => Cursors.Cross,
         };
     }
@@ -454,10 +481,9 @@ internal sealed class OverlayWindow : Window
         var panel = new StackPanel { Orientation = _vertical ? Orientation.Vertical : Orientation.Horizontal };
 
         _toolButtons[Tool.Select] = AddToggle(panel, Glyph(""), "Seleccionar y mover", "V", () => SetTool(Tool.Select));
+        _toolButtons[Tool.Pencil] = AddToggle(panel, Glyph(""), "Lápiz", "P", () => SetTool(Tool.Pencil));
         BuildShapeButton(panel);
-        _toolButtons[Tool.Redact] = AddToggle(panel,
-            new Rectangle { Width = 16, Height = 10, Fill = Brushes.Black, Stroke = Res("Captio.Text"), StrokeThickness = 1.2 },
-            "Censurar", "R", () => SetTool(Tool.Redact));
+        _toolButtons[Tool.Redact] = AddToggle(panel, RedactionIcon(), "Censurar", "R", () => SetTool(Tool.Redact));
         panel.Children.Add(BuildColorButton());
         panel.Children.Add(Separator());
 
@@ -633,9 +659,31 @@ internal sealed class OverlayWindow : Window
         {
             ShapeKind.Rectangle => new Rectangle { Width = 16, Height = 12, Stroke = Res("Captio.Text"), StrokeThickness = 1.8 },
             ShapeKind.Ellipse => new Ellipse { Width = 17, Height = 13, Stroke = Res("Captio.Text"), StrokeThickness = 1.8 },
+            ShapeKind.Line => new Rectangle { Width = 16, Height = 2, RadiusX = 1, RadiusY = 1, Fill = Res("Captio.Text") },
             _ => Glyph("", rotate: -45),
         };
         return new Grid { Width = 18, Height = 16, Children = { icon } };
+    }
+
+    /// <summary>
+    /// A blacked-out line of text: a solid bar between two thin lines. Unlike the outline
+    /// rectangle shape, it reads as "hide this" at a glance.
+    /// </summary>
+    private Canvas RedactionIcon()
+    {
+        var ink = Res("Captio.Text");
+        var canvas = new Canvas { Width = 16, Height = 16 };
+        void Add(double x, double y, double w, double h, double opacity)
+        {
+            var r = new Rectangle { Width = w, Height = h, RadiusX = 1, RadiusY = 1, Fill = ink, Opacity = opacity };
+            Canvas.SetLeft(r, x);
+            Canvas.SetTop(r, y);
+            canvas.Children.Add(r);
+        }
+        Add(0, 2, 11, 1.5, 0.55);   // text line
+        Add(0, 5.5, 16, 5, 1);      // the blacked-out part
+        Add(0, 12.5, 13, 1.5, 0.55); // text line
+        return canvas;
     }
 
     private static string ShapeName(ShapeKind kind) => ShapeNames.First(s => s.Kind == kind).Name;
@@ -757,7 +805,7 @@ internal sealed class OverlayWindow : Window
                 var item = i == owner._selected && owner._drag == Drag.MoveAnnotation ? owner._preview ?? items[i] : items[i];
                 AnnotationRenderer.Draw(dc, item);
             }
-            if (owner._preview is { } preview && owner._drag is Drag.DrawShape or Drag.DrawRedaction) AnnotationRenderer.Draw(dc, preview);
+            if (owner._preview is { } preview && owner._drag is Drag.DrawShape or Drag.DrawPencil or Drag.DrawRedaction) AnnotationRenderer.Draw(dc, preview);
             dc.Pop();
 
             dc.DrawGeometry(Dim, null, new CombinedGeometry(GeometryCombineMode.Exclude, new RectangleGeometry(full), new RectangleGeometry(r)));

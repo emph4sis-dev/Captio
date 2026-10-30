@@ -32,7 +32,8 @@ La grabación de clips (§9) todavía no existe y no aparece en ningún menú, a
 3. Aparece la barra de edición junto a la región (§4).
 4. Herramientas:
    - **Seleccionar** (`V`): mover o eliminar anotaciones; mover o redimensionar la región. Es la herramienta activa al aparecer la barra, para poder ajustar la región antes de elegir otra.
-   - **Forma**: el botón muestra la forma actual; al pulsarlo se abre un menú con flecha, rectángulo sin relleno y elipse sin relleno, igual que el panel de color. `F` activa la forma actual y `Mayús+F` abre el menú.
+   - **Lápiz** (`P`): trazo a mano alzada en el color elegido.
+   - **Forma**: el botón muestra la forma actual; al pulsarlo se abre un menú con flecha, línea, rectángulo sin relleno y elipse sin relleno, igual que el panel de color. `F` activa la forma actual y `Mayús+F` abre el menú.
    - **Censurar** (`R`): rectángulo negro sólido.
    - **Color** (`C`): panel con ocho colores.
    - Deshacer (`Ctrl+Z`), rehacer (`Ctrl+Y`), eliminar anotación seleccionada (`Supr`).
@@ -40,9 +41,10 @@ La grabación de clips (§9) todavía no existe y no aparece en ningún menú, a
 
 ### 3.1 Formas
 
-- Las tres formas usan el color seleccionado y un grosor fijo de 6 DIP. El grosor se convierte a píxeles según la escala del monitor, así que se ve igual en todas las pantallas.
-- Rectángulo y elipse solo tienen contorno. Mientras se dibuja, `Mayús` convierte el rectángulo en cuadrado y la elipse en círculo, conservando la dirección del arrastre.
-- Para seleccionar una forma hay que hacer clic sobre su trazo (con una tolerancia de 6 DIP). El interior vacío de un rectángulo o de una elipse no la selecciona. Una censura sí se selecciona por toda su área, porque es sólida.
+- El lápiz y todas las formas usan el color seleccionado y un grosor fijo de 6 DIP. El grosor se convierte a píxeles según la escala del monitor, así que se ve igual en todas las pantallas.
+- Rectángulo y elipse solo tienen contorno. Mientras se dibuja, `Mayús` convierte el rectángulo en cuadrado, la elipse en círculo y la línea en una recta a 0°, 45° o 90° (para subrayar), conservando la dirección y la longitud del arrastre.
+- La línea tiene extremos redondeados. El lápiz ignora los puntos a menos de 1,5 DIP del anterior, para un trazo suave y ligero; un clic sin arrastrar no deja nada.
+- Para seleccionar una forma o un trazo hay que hacer clic sobre su línea (con una tolerancia de 6 DIP). El interior vacío de un rectángulo, de una elipse o de un trazo cerrado a mano no lo selecciona. Una censura sí se selecciona por toda su área, porque es sólida.
 - Las formas se pueden mover, eliminar, deshacer y rehacer igual que las demás anotaciones.
 - La salida las recorta a la región capturada.
 - La forma elegida en el menú se recuerda entre capturas y reinicios. El icono del botón muestra la forma actual.
@@ -51,20 +53,22 @@ La grabación de clips (§9) todavía no existe y no aparece en ningún menú, a
 
 - El botón muestra un icono de paleta del mismo tamaño que los demás, con una pastilla del color actual en la esquina, sin contorno blanco. Al pulsarlo se abre un panel pequeño con rojo, naranja, amarillo, verde, cian, azul, violeta y magenta, todos con saturación del 100 % y luminosidad HSL del 50 %. El color actual se marca con el fondo de selección.
 - El panel se cierra al elegir un color, al pulsar `Esc` o al hacer clic fuera. Se recorre con las flechas o con `Tab`, se elige con `Enter` o `Espacio`, y cada color tiene un nombre accesible.
-- El color se aplica a flechas, rectángulos y elipses. La censura siempre es negra.
+- El color se aplica al lápiz, flechas, líneas, rectángulos y elipses. La censura siempre es negra.
 - El color elegido se guarda al momento. Un color antiguo que no está en la paleta se sustituye por el tono más cercano de la paleta.
 
 ### 3.3 Grosor
 
 El selector de grosor no aparece. El valor guardado (`ArrowThickness`) se conserva por compatibilidad y para una futura sección «Avanzado», pero mientras `StrokeThicknessCustomizable` sea `false` todas las formas usan el grosor predeterminado.
 
-Fuera de alcance: lápiz, texto, más formas, OCR, plantillas y captura desplazable.
+Fuera de alcance: texto, más formas, OCR, plantillas y captura desplazable.
 
 Métrica: la superficie de selección aparece en menos de 200 ms tras el atajo, en el equipo de prueba.
 
 ## 4. Barra de edición
 
-Orden: Seleccionar · Forma (abre su menú) · Censurar · Color (abre su panel) │ Deshacer · Rehacer · Eliminar │ Copiar · Guardar · Cancelar.
+Orden: Seleccionar · Lápiz · Forma (abre su menú) · Censurar · Color (abre su panel) │ Deshacer · Rehacer · Eliminar │ Copiar · Guardar · Cancelar.
+
+El icono de censura es una barra sólida entre dos líneas de texto finas, como un texto tachado en negro, para que no se confunda con el rectángulo de contorno.
 
 - **Orientación**: preferencia persistente con cuatro valores: Arriba, Abajo, Izquierda y Derecha (la predeterminada). Con Izquierda o Derecha la barra es vertical; con Arriba o Abajo, horizontal. Siempre muestra iconos con tooltip.
 - **Posición**:
