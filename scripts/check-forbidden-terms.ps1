@@ -11,10 +11,15 @@
   Override with -TermsFile or the CAPTIO_FORBIDDEN_TERMS_FILE environment variable.
 #>
 param(
-    [string]$TermsFile = $(if ($env:CAPTIO_FORBIDDEN_TERMS_FILE) { $env:CAPTIO_FORBIDDEN_TERMS_FILE } else { Join-Path $env:USERPROFILE '.captio-private\forbidden-terms.txt' })
+    [string]$TermsFile = $(if ($env:CAPTIO_FORBIDDEN_TERMS_FILE) { $env:CAPTIO_FORBIDDEN_TERMS_FILE } else { Join-Path $env:USERPROFILE '.captio-private\forbidden-terms.txt' }),
+    # Commits about to be published (used by the pre-push hook). Their committed
+    # content and history are checked in addition to the working tree.
+    [string[]]$Commits = @()
 )
 
 $ErrorActionPreference = 'Stop'
+# powershell -File passes "a,b" as one string.
+$Commits = @($Commits | ForEach-Object { $_ -split ',' } | Where-Object { $_ })
 $repo = (Resolve-Path (Join-Path $PSScriptRoot '..')).Path
 
 if (-not (Test-Path $TermsFile)) {
@@ -60,12 +65,31 @@ foreach ($relative in $files) {
     }
 }
 
-# Commit messages are part of the public record too.
 Push-Location $repo
 try {
+    $grepArgs = @('-I', '-i', '-F', '-l') + ($terms | ForEach-Object { '-e', $_ })
+    foreach ($commit in $Commits) {
+        # Committed content can differ from the working tree.
+        foreach ($file in (git grep @grepArgs $commit)) {
+            Write-Host "commit $($commit.Substring(0, 7)): content in $($file.Substring($commit.Length + 1))"
+            $hits++
+        }
+        foreach ($file in (git ls-tree -r --name-only $commit)) {
+            foreach ($term in $terms) {
+                if ($file.IndexOf($term, [StringComparison]::OrdinalIgnoreCase) -ge 0) {
+                    Write-Host "commit $($commit.Substring(0, 7)): path $file"
+                    $hits++
+                }
+            }
+        }
+    }
+
+    # Commit messages are part of the public record too.
+    $tips = @($Commits)
     $null = git rev-parse --verify --quiet HEAD
-    if ($LASTEXITCODE -eq 0) {
-        $log = git log --format='%H%n%B'
+    if ($LASTEXITCODE -eq 0) { $tips += 'HEAD' }
+    if ($tips) {
+        $log = git log --format='%H%n%B' @tips
         foreach ($term in $terms) {
             if ($log -match [regex]::Escape($term)) {
                 Write-Host 'commit history: forbidden term found in a commit message'
