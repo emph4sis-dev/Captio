@@ -12,12 +12,21 @@ public sealed class AppSettingsTests : IDisposable
     public void Dispose() => TempDir.Delete(_dir);
 
     [Fact]
-    public void Imgur_default_requires_consent()
+    public void A_removed_destination_falls_back_to_copy_and_keeps_the_rest()
     {
-        var settings = new AppSettings { DefaultDestination = Destination.Imgur };
-        Assert.Equal(Destination.Copy, settings.EffectiveDefaultDestination);
+        // Written by a version that still had an upload destination.
+        File.WriteAllText(SettingsPath, """
+        { "DefaultDestination": "Imgur", "ImgurConsentAccepted": true, "CopyAlsoSaves": true, "ToolbarSide": "Left" }
+        """);
+        var store = new SettingsStore(SettingsPath);
 
-        Assert.Equal(Destination.Imgur, (settings with { ImgurConsentAccepted = true }).EffectiveDefaultDestination);
+        var s = store.Load();
+        Assert.Equal(Destination.Copy, s.DefaultDestination);
+        Assert.True(s.CopyAlsoSaves);
+        Assert.Equal(ToolbarSide.Left, s.ToolbarSide);
+
+        store.Save(s);
+        Assert.DoesNotContain("Imgur", File.ReadAllText(SettingsPath));
     }
 
     [Fact]
@@ -31,7 +40,6 @@ public sealed class AppSettingsTests : IDisposable
         Assert.Equal(ToolbarSide.Right, s.ToolbarSide);
         Assert.Equal(ShapeKind.Arrow, s.LastShape);
         Assert.Equal(ShapePalette.Default, s.ArrowArgb);
-        Assert.False(s.ImgurConsentAccepted);
         Assert.Equal(Destination.Copy, s.DefaultDestination);
     }
 
@@ -74,7 +82,6 @@ public sealed class AppSettingsTests : IDisposable
         var s = new SettingsStore(SettingsPath).Load();
 
         Assert.Equal(Destination.Save, s.DefaultDestination);
-        Assert.True(s.ImgurConsentAccepted);
         Assert.Equal(0xFFFF0000u, s.ArrowArgb); // old #E5484D snaps to palette red
         Assert.Equal(10, s.ArrowThickness);      // kept for a future Advanced section
         Assert.Equal(AppSettings.DefaultStrokeThickness, s.StrokeThickness); // but strokes stay fixed

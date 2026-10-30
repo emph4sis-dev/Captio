@@ -14,21 +14,11 @@
     <SatelliteResourceLanguages>es</SatelliteResourceLanguages>
     <RootNamespace>Captio</RootNamespace>
     <AssemblyName>Captio</AssemblyName>
-    <!-- Public, non-secret Client-ID of the registered Imgur application.
-         Pass it at build time: dotnet build -p:ImgurClientId=xxxx -->
-    <ImgurClientId Condition="'$(ImgurClientId)' == ''"></ImgurClientId>
   </PropertyGroup>
 
   <ItemGroup>
     <Using Remove="System.Windows.Forms" />
     <Using Remove="System.Drawing" />
-  </ItemGroup>
-
-  <ItemGroup>
-    <AssemblyAttribute Include="System.Reflection.AssemblyMetadataAttribute">
-      <_Parameter1>ImgurClientId</_Parameter1>
-      <_Parameter2>$(ImgurClientId)</_Parameter2>
-    </AssemblyAttribute>
   </ItemGroup>
 
   <ItemGroup>

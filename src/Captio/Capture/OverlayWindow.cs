@@ -341,7 +341,6 @@ internal sealed class OverlayWindow : Window
             case Key.Y when ctrl: Document.Redo(); break;
             case Key.C when ctrl: Deliver(Destination.Copy); break;
             case Key.S when ctrl: Deliver(Destination.Save); break;
-            case Key.U when ctrl: Deliver(Destination.Imgur); break;
             case Key.Enter: Deliver(_session.DefaultDestination); break;
             case Key.Delete or Key.Back: DeleteSelected(); break;
             case Key.V when !ctrl: SetTool(Tool.Select); break;
@@ -469,12 +468,6 @@ internal sealed class OverlayWindow : Window
 
         AddButton(panel, Glyph(""), "Copiar", "Ctrl+C", () => Deliver(Destination.Copy));
         AddButton(panel, Glyph(""), "Guardar en la carpeta de capturas", "Ctrl+S", () => Deliver(Destination.Save));
-        // The label keeps the one network action unambiguous where there is room for it.
-        var upload = AddButton(panel, _vertical ? Glyph("") : LabeledGlyph("", "Imgur"),
-            _session.ImgurAvailable ? "Subir a Imgur" : "Subida a Imgur no disponible: esta compilación no tiene Client-ID",
-            _session.ImgurAvailable ? "Ctrl+U" : null, () => Deliver(Destination.Imgur));
-        upload.IsEnabled = _session.ImgurAvailable;
-        ToolTipService.SetShowOnDisabled(upload, true);
         AddButton(panel, Glyph(""), "Cancelar", "Ctrl+X", _session.Cancel);
 
         return new Border
@@ -658,14 +651,6 @@ internal sealed class OverlayWindow : Window
         RenderTransformOrigin = new Point(0.5, 0.5),
         RenderTransform = new RotateTransform(rotate),
     };
-
-    private static StackPanel LabeledGlyph(string glyph, string label)
-    {
-        var panel = new StackPanel { Orientation = Orientation.Horizontal };
-        panel.Children.Add(Glyph(glyph));
-        panel.Children.Add(new TextBlock { Text = label, Margin = new Thickness(6, 0, 2, 0), VerticalAlignment = VerticalAlignment.Center });
-        return panel;
-    }
 
     private ToggleButton AddToggle(Panel panel, UIElement content, string name, string shortcut, Action action)
     {

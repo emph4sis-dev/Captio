@@ -1,10 +1,7 @@
-using System.Reflection;
-using System.Windows;
 using Captio.Core.Library;
 using Captio.Core.Settings;
 using Captio.Core.Startup;
 using Captio.Core.Storage;
-using Captio.Upload;
 
 namespace Captio;
 
@@ -40,9 +37,6 @@ internal sealed class AppServices
     public string LegacyLibraryPath { get; }
 
     public bool UsingLegacyLibrary => CaptureFolderResolver.SamePath(Settings.CaptureFolder, LegacyLibraryPath);
-
-    /// <summary>Public Client-ID baked in at build time; null when the build has none.</summary>
-    public string? ImgurClientId { get; } = ResolveImgurClientId();
 
     public event EventHandler? SettingsChanged;
 
@@ -90,32 +84,10 @@ internal sealed class AppServices
         return Library!.AddImage(png, DateTimeOffset.Now);
     }
 
-    /// <summary>Shows the Imgur notice until the user accepts it once.</summary>
-    public bool EnsureImgurConsent(Window? owner)
-    {
-        if (Settings.ImgurConsentAccepted) return true;
-
-        var dialog = new ConsentDialog(readOnly: false);
-        if (owner is { IsVisible: true }) dialog.Owner = owner;
-        if (dialog.ShowDialog() != true) return false;
-
-        UpdateSettings(s => s with { ImgurConsentAccepted = true });
-        return true;
-    }
-
     private void ReplaceLibrary()
     {
         _library = null;
         LibraryChanged?.Invoke(this, EventArgs.Empty);
     }
-
-    private static string? ResolveImgurClientId()
-    {
-        var fromEnvironment = Environment.GetEnvironmentVariable("CAPTIO_IMGUR_CLIENT_ID");
-        if (!string.IsNullOrWhiteSpace(fromEnvironment)) return fromEnvironment.Trim();
-
-        var baked = typeof(AppServices).Assembly.GetCustomAttributes<AssemblyMetadataAttribute>()
-            .FirstOrDefault(a => a.Key == "ImgurClientId")?.Value;
-        return string.IsNullOrWhiteSpace(baked) ? null : baked.Trim();
-    }
 }
+
