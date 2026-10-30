@@ -1,5 +1,5 @@
 # Builds the Windows installer and publishes it as a GitHub release when a version tag is pushed:
-#   git tag v1.0.1 && git push origin v1.0.1
+#   git tag v1.0.2 && git push origin v1.0.2
 # Running it by hand (Actions → Release → Run workflow) tests and builds the installer as a
 # downloadable artifact without publishing anything.
 #

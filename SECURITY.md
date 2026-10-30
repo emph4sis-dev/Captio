@@ -25,5 +25,5 @@ Recibirás respuesta en ese mismo aviso. Si el problema se confirma, se corregir
 Las versiones nuevas incluyen un archivo `.sha256` y una atestación de procedencia generada por GitHub Actions:
 
 ```bash
-gh attestation verify Captio-Setup-1.0.1.exe --repo emph4sis-dev/Captio
+gh attestation verify Captio-Setup-1.0.2.exe --repo emph4sis-dev/Captio
 ```
