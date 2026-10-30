@@ -22,8 +22,9 @@ internal sealed class FlattenedImage(BitmapSource bitmap, byte[] png)
 internal static class ImageComposer
 {
     /// <summary>
-    /// Renders the region with its arrows, then overwrites redacted pixels with black.
-    /// The returned image has no layers; the covered content is gone.
+    /// Renders the region with its arrows and outlines (clipped to the region), then
+    /// overwrites redacted pixels with black. The returned image has no layers; the
+    /// covered content is gone.
     /// </summary>
     public static FlattenedImage Flatten(BitmapSource monitorImage, Int32Rect region, IReadOnlyList<Annotation> annotations)
     {
@@ -33,7 +34,7 @@ internal static class ImageComposer
         {
             dc.DrawImage(new CroppedBitmap(monitorImage, region), new Rect(0, 0, region.Width, region.Height));
             dc.PushTransform(new TranslateTransform(-region.X, -region.Y));
-            foreach (var arrow in annotations.OfType<ArrowAnnotation>()) AnnotationRenderer.Draw(dc, arrow);
+            foreach (var shape in annotations.OfType<StrokedAnnotation>()) AnnotationRenderer.Draw(dc, shape);
             dc.Pop();
         }
 

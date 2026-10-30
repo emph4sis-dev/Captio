@@ -9,6 +9,9 @@
     <AllowUnsafeBlocks>true</AllowUnsafeBlocks>
     <!-- The PerMonitorV2 manifest is required by WPF; the WinForms tray icon shares it. -->
     <NoWarn>$(NoWarn);WFO0003</NoWarn>
+    <!-- A tray app that is idle almost always: no background GC thread, Spanish resources only. -->
+    <ConcurrentGarbageCollection>false</ConcurrentGarbageCollection>
+    <SatelliteResourceLanguages>es</SatelliteResourceLanguages>
     <RootNamespace>Captio</RootNamespace>
     <AssemblyName>Captio</AssemblyName>
     <!-- Public, non-secret Client-ID of the registered Imgur application.

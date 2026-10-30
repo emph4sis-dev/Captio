@@ -1,13 +1,15 @@
-using System.IO;
 using System.Windows;
+using Captio.Core.Annotations;
+using Captio.Core.Delivery;
 using Captio.Core.Settings;
+using Captio.Core.Storage;
 using Captio.Upload;
 
 namespace Captio.Capture;
 
 /// <summary>
 /// One capture from hotkey to destination. Owns an overlay per monitor; nothing is
-/// written anywhere unless the user picks Save.
+/// written anywhere unless the user saves (or asked to keep a copy when copying).
 /// </summary>
 internal sealed class CaptureSession(AppServices services)
 {
@@ -45,6 +47,11 @@ internal sealed class CaptureSession(AppServices services)
         source.Activate();
     }
 
+    /// <summary>Remembered immediately so the next capture and the next start reuse it.</summary>
+    public void RememberColor(uint argb) => services.UpdateSettings(s => s with { ArrowArgb = argb });
+
+    public void RememberShape(ShapeKind shape) => services.UpdateSettings(s => s with { LastShape = shape });
+
     public void Cancel() => End();
 
     public void Deliver(OverlayWindow source, Destination destination)
@@ -53,46 +60,69 @@ internal sealed class CaptureSession(AppServices services)
         if (destination == Destination.Imgur && (!ImgurAvailable || !services.EnsureImgurConsent(source))) return;
 
         var image = ImageComposer.Flatten(source.Snapshot.Image, region, source.Document.Items);
-        RememberArrowStyle(source);
-
         switch (destination)
         {
             case Destination.Copy:
-                ImageComposer.CopyToClipboard(image);
-                image.Wipe();
-                End();
+                Copy(source, image);
                 break;
-
             case Destination.Save:
-                try
-                {
-                    services.Library.AddImage(image.Png, DateTimeOffset.Now);
-                }
-                catch (Exception e) when (e is IOException or UnauthorizedAccessException)
-                {
-                    MessageBox.Show(source, "No se pudo guardar la captura: " + e.Message, "Captio", MessageBoxButton.OK, MessageBoxImage.Error);
-                    return;
-                }
-                finally
-                {
-                    image.Wipe();
-                }
-                services.Notify("Captura guardada en la biblioteca.");
-                End();
+                Save(source, image);
                 break;
-
             case Destination.Imgur:
                 End();
-                new UploadWindow(services, image).Show();
+                var upload = new UploadWindow(services, image);
+                upload.Closed += (_, _) => Interop.MemoryRelief.ReleaseWhenIdle(upload.Dispatcher);
+                upload.Show();
                 break;
         }
     }
 
-    private void RememberArrowStyle(OverlayWindow source)
+    private void Copy(OverlayWindow source, FlattenedImage image)
     {
-        var settings = services.Settings;
-        if (settings.ArrowArgb != source.ArrowColor || settings.ArrowThickness != source.ArrowThickness)
-            services.UpdateSettings(s => s with { ArrowArgb = source.ArrowColor, ArrowThickness = source.ArrowThickness });
+        var outcome = CopyWorkflow.Run(image.Png, services.Settings.CopyAlsoSaves,
+            copy: _ => ImageComposer.CopyToClipboard(image),
+            save: services.SaveCapture);
+        image.Wipe();
+
+        switch (outcome)
+        {
+            case CopyFailed failed:
+                MessageBox.Show(source, "No se pudo copiar la imagen al portapapeles: " + failed.Error.Message,
+                    "Captio", MessageBoxButton.OK, MessageBoxImage.Error);
+                return; // the editor stays open
+            case CopiedButSaveFailed failed:
+                services.Notify("La imagen se copió, pero no se pudo guardar la copia: " + failed.Error.Message);
+                break;
+        }
+        End();
+    }
+
+    private void Save(OverlayWindow source, FlattenedImage image)
+    {
+        while (true)
+        {
+            try
+            {
+                services.SaveCapture(image.Png);
+                image.Wipe();
+                services.Notify("Captura guardada.");
+                End();
+                return;
+            }
+            catch (CaptureFolderException e)
+            {
+                var answer = MessageBox.Show(source, e.Message + "\n\n¿Quieres elegir otra carpeta de capturas?", "Captio",
+                    MessageBoxButton.YesNo, MessageBoxImage.Warning);
+                if (answer != MessageBoxResult.Yes || !CaptureFolderFlow.Choose(services, source)) break;
+            }
+            catch (Exception e) when (e is System.IO.IOException or UnauthorizedAccessException)
+            {
+                MessageBox.Show(source, "No se pudo guardar la captura: " + e.Message, "Captio", MessageBoxButton.OK, MessageBoxImage.Error);
+                break;
+            }
+        }
+        // Not saved: the editor stays open with the capture intact.
+        image.Wipe();
     }
 
     private void End()

@@ -105,4 +105,61 @@ public class ImageComposerTests
         foreach (var chunk in new[] { "pHYs", "tEXt", "iTXt", "zTXt", "tIME", "eXIf", "iCCP", "gAMA", "sRGB", "cHRM" })
             Assert.DoesNotContain(chunk, ascii);
     }
+
+    private static byte[] At(byte[] px, int width, int x, int y) => px[((y * width + x) * 4)..((y * width + x) * 4 + 4)];
+
+    private static readonly byte[] White = [255, 255, 255, 255];
+    private static readonly byte[] PureRed = [0, 0, 255, 255];
+    private static readonly byte[] Black = [0, 0, 0, 255];
+
+    [Fact]
+    public void Rectangle_is_flattened_as_outline_only()
+    {
+        // Stroke 2 centered on x=5 covers pixels 4 and 5 exactly.
+        var px = OnSta(() => Pixels(ImageComposer.Flatten(Monitor(255, 255, 255), new Int32Rect(0, 0, 40, 30),
+            [new RectangleAnnotation(5, 5, 30, 20, 0xFFFF0000, 2)]).Bitmap));
+
+        Assert.Equal(PureRed, At(px, 40, 5, 15));  // left edge
+        Assert.Equal(PureRed, At(px, 40, 20, 4));  // top edge
+        Assert.Equal(White, At(px, 40, 20, 15));   // interior untouched: no fill
+        Assert.Equal(White, At(px, 40, 1, 1));     // outside
+    }
+
+    [Fact]
+    public void Ellipse_is_flattened_as_outline_only()
+    {
+        var px = OnSta(() => Pixels(ImageComposer.Flatten(Monitor(255, 255, 255), new Int32Rect(0, 0, 40, 30),
+            [new EllipseAnnotation(4, 4, 32, 22, 0xFFFF0000, 3)]).Bitmap));
+
+        var rightmost = At(px, 40, 35, 15);
+        Assert.True(rightmost[2] > 200 && rightmost[1] < 80, "the outline is red");
+        Assert.Equal(White, At(px, 40, 20, 15));   // center
+        Assert.Equal(White, At(px, 40, 1, 1));     // bounding-box corner outside the curve
+    }
+
+    [Fact]
+    public void Shapes_are_clipped_to_the_capture_region()
+    {
+        // Region (10,10,20,10); the rectangle's outline lies entirely outside it.
+        var px = OnSta(() => Pixels(ImageComposer.Flatten(Monitor(255, 255, 255), new Int32Rect(10, 10, 20, 10),
+            [new RectangleAnnotation(0, 0, 40, 30, 0xFFFF0000, 2), new RectangleAnnotation(15, 12, 100, 100, 0xFFFF0000, 2)]).Bitmap));
+
+        Assert.Equal(20 * 10 * 4, px.Length);
+        Assert.Equal(PureRed, At(px, 20, 5, 5));   // left edge of the second rectangle, in region space
+        Assert.Equal(White, At(px, 20, 0, 0));
+        Assert.Equal(White, At(px, 20, 19, 9));
+    }
+
+    [Fact]
+    public void Redaction_wins_over_shapes_drawn_on_top()
+    {
+        var px = OnSta(() => Pixels(ImageComposer.Flatten(Monitor(255, 255, 255), new Int32Rect(0, 0, 40, 30),
+        [
+            new RedactionAnnotation(0, 0, 40, 30),
+            new RectangleAnnotation(5, 5, 30, 20, 0xFF00FF00, 4),
+            new EllipseAnnotation(5, 5, 30, 20, 0xFF0000FF, 4),
+        ]).Bitmap));
+
+        Assert.All(px.Chunk(4), p => Assert.Equal(Black, p));
+    }
 }

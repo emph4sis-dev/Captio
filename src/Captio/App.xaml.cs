@@ -3,6 +3,8 @@ using System.Windows;
 using Captio.Capture;
 using Captio.Core.Library;
 using Captio.Core.Settings;
+using Captio.Core.Startup;
+using Captio.Core.Storage;
 using Captio.Interop;
 using Captio.LibraryUi;
 using Captio.SettingsUi;
@@ -19,8 +21,6 @@ public partial class App : Application
     private LibraryWindow? _libraryWindow;
     private SettingsWindow? _settingsWindow;
 
-    internal AppServices Services => _services!;
-
     protected override void OnStartup(StartupEventArgs e)
     {
         base.OnStartup(e);
@@ -34,44 +34,80 @@ public partial class App : Application
 
         var roaming = Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.ApplicationData), "Captio");
         var local = Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.LocalApplicationData), "Captio");
+        var legacyLibrary = LegacyLibrary.DefaultPath(Environment.GetFolderPath(Environment.SpecialFolder.LocalApplicationData));
 
-        _tray = new TrayIcon(StartCapture, StartClip, ShowLibrary, ShowSettings, Shutdown);
+        _tray = new TrayIcon(StartCapture, ShowLibrary, ShowSettings, Shutdown);
         _services = new AppServices(
             new SettingsStore(Path.Combine(roaming, "settings.json")),
-            new LibraryStore(Path.Combine(local, "Library")),
+            new WindowsKnownFolders(),
+            new RunKeyLaunchAtLogin(new WindowsStartupRegistry(), Environment.ProcessPath!),
+            legacyLibrary,
+            new LibraryMigrator(Path.Combine(local, "migration.json")),
             _tray.Notify);
+
+        FinishInterruptedMigration();
+        KeepLegacyLibraryReachable();
+
         _hotkeys = new HotkeyManager();
         RegisterHotkeys();
+        // Started with --autostart or by hand, Captio only lives in the tray: no window opens.
+        MemoryRelief.ReleaseWhenIdle(Dispatcher);
     }
 
-    internal void RegisterHotkeys()
+    /// <summary>Completes or undoes a capture move cut short by a crash or shutdown.</summary>
+    private void FinishInterruptedMigration()
+    {
+        var (outcome, destination) = _services!.Migrator.Recover();
+        if (outcome != RecoveryOutcome.Completed || destination is null) return;
+
+        var configured = CaptureFolderResolver.SamePath(destination, _services.Folders.DefaultFolder) ? null : destination;
+        _services.UpdateSettings(s => s with { CaptureFolder = configured });
+    }
+
+    /// <summary>
+    /// An install from version 0.1 kept captures in a private folder. Those stay visible
+    /// until the user chooses to move them; a fresh install uses the Windows Screenshots folder.
+    /// </summary>
+    private void KeepLegacyLibraryReachable()
+    {
+        if (_services!.Settings.CaptureFolder is null && LegacyLibrary.HasCaptures(_services.LegacyLibraryPath))
+            _services.UpdateSettings(s => s with { CaptureFolder = _services.LegacyLibraryPath });
+    }
+
+    /// <returns>false when another program already owns the capture hotkey.</returns>
+    internal bool RegisterHotkeys(bool notify = true)
     {
         _hotkeys!.UnregisterAll();
-        var settings = _services!.Settings;
-        var taken = new List<string>();
-        if (!_hotkeys.TryRegister(settings.ImageHotkey, StartCapture)) taken.Add(HotkeyText.Format(settings.ImageHotkey));
-        if (!_hotkeys.TryRegister(settings.ClipHotkey, StartClip)) taken.Add(HotkeyText.Format(settings.ClipHotkey));
+        var hotkey = _services!.Settings.ImageHotkey;
+        // Clip recording is not available yet, so its hotkey is deliberately not registered.
+        if (_hotkeys.TryRegister(hotkey, StartCapture)) return true;
 
-        if (taken.Count > 0)
-            _services.Notify($"Otro programa ya usa {string.Join(" y ", taken)}. Cámbialo en Configuración.");
+        if (notify) _services.Notify($"Otro programa ya usa {HotkeyText.Format(hotkey)}. Cámbialo en Configuración.");
+        return false;
     }
 
     private void StartCapture()
     {
         if (_activeCapture is not null) return;
         _activeCapture = new CaptureSession(_services!);
-        _activeCapture.Ended += (_, _) => _activeCapture = null;
+        _activeCapture.Ended += (_, _) =>
+        {
+            _activeCapture = null;
+            MemoryRelief.ReleaseWhenIdle(Dispatcher);
+        };
         _activeCapture.Start();
     }
-
-    private void StartClip() => _services!.Notify("La grabación de clips todavía no está disponible en esta versión.");
 
     private void ShowLibrary()
     {
         if (_libraryWindow is null)
         {
-            _libraryWindow = new LibraryWindow(_services!);
-            _libraryWindow.Closed += (_, _) => _libraryWindow = null;
+            _libraryWindow = new LibraryWindow(_services!, ShowSettings);
+            _libraryWindow.Closed += (_, _) =>
+            {
+                _libraryWindow = null;
+                MemoryRelief.ReleaseWhenIdle(Dispatcher);
+            };
         }
         _libraryWindow.Show();
         _libraryWindow.Activate();
@@ -81,8 +117,12 @@ public partial class App : Application
     {
         if (_settingsWindow is null)
         {
-            _settingsWindow = new SettingsWindow(_services!, RegisterHotkeys);
-            _settingsWindow.Closed += (_, _) => _settingsWindow = null;
+            _settingsWindow = new SettingsWindow(_services!, () => RegisterHotkeys(notify: false));
+            _settingsWindow.Closed += (_, _) =>
+            {
+                _settingsWindow = null;
+                MemoryRelief.ReleaseWhenIdle(Dispatcher);
+            };
         }
         _settingsWindow.Show();
         _settingsWindow.Activate();

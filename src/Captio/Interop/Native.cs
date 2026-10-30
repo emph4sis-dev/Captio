@@ -6,7 +6,6 @@ internal static partial class Native
 {
     public const int WM_HOTKEY = 0x0312;
     public const int SRCCOPY = 0x00CC0020;
-    public const int CAPTUREBLT = 0x40000000;
     public const uint MOD_NOREPEAT = 0x4000;
     public const uint SWP_NOZORDER = 0x0004;
     public const uint SWP_NOACTIVATE = 0x0010;
