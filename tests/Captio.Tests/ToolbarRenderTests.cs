@@ -14,6 +14,7 @@ namespace Captio.Tests;
 /// Builds the real editing toolbar in both orientations and renders it to PNG.
 /// Catches resource errors and leaves the images for review when CAPTIO_RENDER_DIR is set.
 /// </summary>
+[Trait("Category", "Desktop")]
 public sealed class ToolbarRenderTests : IDisposable
 {
     private readonly string _root = Path.Combine(Path.GetTempPath(), "captio-toolbar-" + Guid.NewGuid().ToString("N"));

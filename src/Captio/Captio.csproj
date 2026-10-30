@@ -14,6 +14,7 @@
     <SatelliteResourceLanguages>es</SatelliteResourceLanguages>
     <RootNamespace>Captio</RootNamespace>
     <AssemblyName>Captio</AssemblyName>
+    <ApplicationIcon>Assets\Captio.ico</ApplicationIcon>
   </PropertyGroup>
 
   <ItemGroup>
@@ -23,6 +24,11 @@
 
   <ItemGroup>
     <ProjectReference Include="..\Captio.Core\Captio.Core.csproj" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <!-- One icon for the executable, the tray, the Start menu and the installer (scripts/make-icon.cs). -->
+    <Resource Include="Assets\Captio.ico" />
   </ItemGroup>
 
 </Project>

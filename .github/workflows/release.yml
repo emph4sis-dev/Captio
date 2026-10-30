@@ -1,0 +1,63 @@
+# Builds the Windows installer and publishes it as a GitHub release when a version tag is pushed:
+#   git tag v1.0.0 && git push origin v1.0.0
+# Running it by hand (Actions → Release → Run workflow) builds the installer as a downloadable
+# artifact without publishing a release.
+name: Release
+
+on:
+  push:
+    tags: ['v*']
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+jobs:
+  installer:
+    runs-on: windows-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-dotnet@v4
+        with:
+          dotnet-version: '10.0.x'
+
+      - name: Test
+        # Tests that open real windows need an interactive desktop, which hosted runners do not guarantee.
+        run: dotnet test Captio.slnx -c Release --filter "Category!=Desktop"
+
+      - name: Install Inno Setup
+        shell: pwsh
+        run: |
+          if (-not (Test-Path "${env:ProgramFiles(x86)}\Inno Setup 6\ISCC.exe")) {
+            choco install innosetup --no-progress -y
+          }
+
+      - name: Build installer
+        shell: pwsh
+        run: |
+          $version = if ('${{ github.ref_type }}' -eq 'tag') { '${{ github.ref_name }}'.TrimStart('v') } else { '' }
+          ./scripts/build-installer.ps1 -Version $version
+
+      - name: Keep the installer as a build artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: Captio-Setup
+          path: artifacts/installer/*.exe
+
+      - name: Publish release
+        if: github.ref_type == 'tag'
+        uses: softprops/action-gh-release@v2
+        with:
+          name: Captio ${{ github.ref_name }}
+          files: artifacts/installer/*.exe
+          generate_release_notes: true
+          body: |
+            ## Instalar
+
+            1. Descarga el instalador **Captio-Setup-….exe** (abajo, en *Assets*).
+            2. Ábrelo. No pide permisos de administrador: se instala solo para tu usuario.
+            3. Si Windows SmartScreen avisa de una aplicación no reconocida, pulsa *Más información → Ejecutar de todas formas* (el instalador todavía no está firmado).
+
+            Captio queda en la bandeja del sistema. Pulsa **ImpPant** para capturar.
+            Requiere Windows 10 (1809) o Windows 11 de 64 bits. No hace falta instalar .NET.
