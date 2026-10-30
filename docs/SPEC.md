@@ -103,6 +103,12 @@ Casos:
 
 `Ctrl+S` escribe el PNG aplanado directamente en la carpeta de capturas (§7). Si la carpeta no se puede usar, se explica el motivo, se ofrece elegir otra y el editor sigue abierto. Nunca se guarda en otra ubicación sin preguntar.
 
+Nombre del archivo: la palabra de Windows para «captura de pantalla» en el **idioma de pantalla** del sistema, seguida de la fecha y hora locales como `aaaa-MM-dd HHmmss` (`Captura de pantalla 2026-10-30 013340.png`, `Screenshot 2026-10-30 013340.png`).
+
+- El idioma se busca de lo más concreto a lo general (`pt-PT` → `pt`; `zh-TW` → `zh-Hant`). Hay unos 25 idiomas incluidos y los demás usan `Screenshot`.
+- La parte de fecha no depende del formato regional: siempre usa el calendario gregoriano, cifras occidentales y 24 horas, para que los archivos ordenados por nombre queden en orden cronológico.
+- Dos capturas en el mismo segundo reciben « (2)», « (3)»… y nunca se sobrescribe un archivo.
+
 ## 7. Carpeta de capturas y biblioteca
 
 ### 7.1 Ubicación

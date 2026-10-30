@@ -92,10 +92,12 @@ public sealed class LibraryStore
     }
 
     /// <summary>Writes the PNG; never scans the folder.</summary>
-    public LibraryItem AddImage(ReadOnlySpan<byte> png, DateTimeOffset createdAt)
+    /// <param name="displayLanguage">Language of the file name; the Windows display language by default.</param>
+    public LibraryItem AddImage(ReadOnlySpan<byte> png, DateTimeOffset createdAt, System.Globalization.CultureInfo? displayLanguage = null)
     {
         var (width, height) = PngSanitizer.ReadSize(png);
-        var fileName = UniqueFileName(Root, "Captura " + createdAt.ToLocalTime().ToString("yyyy-MM-dd HH-mm-ss"), ".png");
+        var baseName = CaptureFileName.For(createdAt.ToLocalTime().DateTime, displayLanguage ?? System.Globalization.CultureInfo.CurrentUICulture);
+        var fileName = UniqueFileName(Root, baseName, ".png");
         var path = Path.Combine(Root, fileName);
 
         try

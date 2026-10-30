@@ -41,7 +41,7 @@ Si `ImpPant` abre la herramienta de recortes del sistema, desactiva en Windows *
 
 ## Guardado
 
-- **`Ctrl+S`** guarda un PNG aplanado directamente en la **carpeta de capturas**.
+- **`Ctrl+S`** guarda un PNG aplanado directamente en la **carpeta de capturas**, con el mismo nombre que usa Windows en su idioma: `Captura de pantalla 2026-10-30 013340.png` en español, `Screenshot 2026-10-30 013340.png` en inglés, `Capture d'écran …` en francés. Así se ordenan por fecha y conviven con las capturas de Windows.
 - **`Ctrl+C`** copia la imagen al portapapeles. Si activas *Guardar automáticamente una copia al copiar*, Captio guarda también esa misma imagen en la carpeta de capturas, pero solo si la copia funcionó. Si el guardado falla, la imagen sigue en el portapapeles y verás un aviso.
 - La **carpeta de capturas** predeterminada es la de Windows: *Imágenes\Screenshots*, resuelta con `FOLDERID_Screenshots`. Así respeta OneDrive, las carpetas redirigidas y el idioma. Captio no crea ninguna subcarpeta propia. Puedes elegir otra en la sección *Guardado* de Configuración; *Volver a la de Windows* restablece la predeterminada.
 - La **biblioteca** es esa misma carpeta: lo que guardes, renombres o borres desde el Explorador también se ve en Captio.
