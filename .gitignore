@@ -9,3 +9,6 @@ publish/
 # Research material never belongs in this repository.
 research/
 private/
+
+# Build output of scripts/build-installer.ps1
+artifacts/

@@ -15,6 +15,7 @@ namespace Captio.Tests;
 /// Catches XAML and resource errors, and leaves the image for visual review when
 /// CAPTIO_RENDER_DIR is set.
 /// </summary>
+[Trait("Category", "Desktop")]
 public sealed class SettingsWindowRenderTests : IDisposable
 {
     private readonly string _root = Path.Combine(Path.GetTempPath(), "captio-render-" + Guid.NewGuid().ToString("N"));
@@ -72,6 +73,9 @@ public sealed class SettingsWindowRenderTests : IDisposable
     private static (int, int) Render(Window window, string? outputDir)
     {
         var content = (FrameworkElement)window.Content;
+        // Lay out explicitly: on a shared UI thread the deferred layout pass may not have run yet.
+        content.Measure(new Size(window.Width, double.PositiveInfinity));
+        content.Arrange(new Rect(content.DesiredSize));
         var width = (int)Math.Ceiling(content.ActualWidth);
         var height = (int)Math.Ceiling(content.ActualHeight);
 

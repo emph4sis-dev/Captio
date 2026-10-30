@@ -1,5 +1,4 @@
 using System.Drawing;
-using System.Drawing.Drawing2D;
 using System.Windows.Forms;
 
 namespace Captio;
@@ -33,29 +32,12 @@ internal sealed class TrayIcon : IDisposable
 
     public void Notify(string message) => _icon.ShowBalloonTip(3000, "Captio", message, ToolTipIcon.None);
 
-    /// <summary>Viewfinder corners on an indigo tile, drawn at runtime.</summary>
+    /// <summary>The app's icon at the tray's size, from the same file as the executable and the installer.</summary>
     private static Icon CreateIcon()
     {
-        using var bitmap = new Bitmap(32, 32);
-        using (var g = Graphics.FromImage(bitmap))
-        {
-            g.SmoothingMode = SmoothingMode.AntiAlias;
-            using var tile = new GraphicsPath();
-            tile.AddArc(1, 1, 12, 12, 180, 90);
-            tile.AddArc(19, 1, 12, 12, 270, 90);
-            tile.AddArc(19, 19, 12, 12, 0, 90);
-            tile.AddArc(1, 19, 12, 12, 90, 90);
-            tile.CloseFigure();
-            using var fill = new SolidBrush(Color.FromArgb(0x4F, 0x5B, 0xD5));
-            g.FillPath(fill, tile);
-
-            using var pen = new Pen(Color.White, 3f) { StartCap = LineCap.Round, EndCap = LineCap.Round, LineJoin = LineJoin.Round };
-            g.DrawLines(pen, [new PointF(8, 14), new PointF(8, 8), new PointF(14, 8)]);
-            g.DrawLines(pen, [new PointF(18, 24), new PointF(24, 24), new PointF(24, 18)]);
-            using var dot = new SolidBrush(Color.White);
-            g.FillEllipse(dot, 14, 14, 4, 4);
-        }
-        return Icon.FromHandle(bitmap.GetHicon());
+        var resource = System.Windows.Application.GetResourceStream(new Uri("pack://application:,,,/Captio;component/Assets/Captio.ico"));
+        using var stream = resource.Stream;
+        return new Icon(stream, SystemInformation.SmallIconSize);
     }
 
     public void Dispose()

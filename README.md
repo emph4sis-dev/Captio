@@ -1,6 +1,6 @@
 # Captio
 
-Herramienta de captura de pantalla para Windows centrada en rapidez y privacidad: captura una región, señálala con flechas, rectángulos o elipses, censúrala con bloques negros, y decide tú dónde termina la imagen.
+Herramienta de captura de pantalla para Windows centrada en rapidez y privacidad: captura una región, señálala con el lápiz, flechas, líneas, rectángulos o elipses, censúrala con bloques negros, y decide tú dónde termina la imagen.
 
 - Sin cuentas, telemetría ni nube propia.
 - Sin ninguna actividad de red: todo ocurre en tu equipo.
@@ -8,9 +8,19 @@ Herramienta de captura de pantalla para Windows centrada en rapidez y privacidad
 
 > «Captio» es un nombre provisional.
 
+## Instalar
+
+1. Descarga **Captio-Setup-x.y.z.exe** desde [Releases](https://github.com/emph4sis-dev/captio/releases/latest).
+2. Ábrelo. No pide permisos de administrador: se instala solo para tu usuario, en `%LOCALAPPDATA%\Programs\Captio`, con acceso en el menú Inicio.
+3. Si Windows SmartScreen avisa de una aplicación no reconocida, pulsa *Más información → Ejecutar de todas formas*. El instalador todavía no está firmado digitalmente.
+
+Captio queda en la bandeja del sistema; pulsa **ImpPant** para capturar. Requiere Windows 10 (1809) u 11 de 64 bits y no necesita instalar .NET: lo incluye.
+
+Para desinstalar: *Configuración de Windows → Aplicaciones → Captio → Desinstalar*. Se borran el programa y su entrada de *Iniciar con Windows*; tus capturas y tu configuración (`%APPDATA%\Captio`) se conservan.
+
 ## Estado
 
-Versión 0.2, en desarrollo. La especificación completa está en [docs/SPEC.md](docs/SPEC.md).
+Versión 1.0. La especificación completa está en [docs/SPEC.md](docs/SPEC.md).
 
 | Función | Estado |
 |---|---|
@@ -84,6 +94,27 @@ dotnet test
 dotnet run --project src/Captio
 ```
 
+
+## Publicar una versión
+
+El instalador se genera con [Inno Setup 6](https://jrsoftware.org/isinfo.php) a partir de [installer/Captio.iss](installer/Captio.iss):
+
+```bash
+powershell -ExecutionPolicy Bypass -File scripts/build-installer.ps1
+```
+
+Deja `artifacts/installer/Captio-Setup-<versión>.exe`: autocontenido (incluye .NET), win-x64 y precompilado con ReadyToRun para arrancar más rápido.
+
+Para publicar, sube una etiqueta de versión. El flujo [Release](.github/workflows/release.yml) ejecuta las pruebas, construye el instalador y crea la versión en GitHub con el instalador adjunto:
+
+```bash
+git tag v1.0.1
+```
+
+```bash
+git push origin v1.0.1
+```
+
 ## Estructura
 
 ```
@@ -92,7 +123,8 @@ src/Captio.Core      Lógica sin interfaz: anotaciones y formas, censura, PNG, c
 src/Captio           App WPF: bandeja, atajos globales, overlay de captura, ventanas
 tests/               Pruebas de Captio.Core, del aplanado en WPF y del arranque en la bandeja
 docs/SPEC.md         Especificación funcional
-scripts/             Comprobaciones del repositorio
+scripts/             Comprobación de términos, instalador e icono
+installer/           Script de Inno Setup del instalador por usuario
 ```
 
 ## Contribuir
@@ -110,3 +142,7 @@ También se puede ejecutar a mano:
 ```bash
 powershell -ExecutionPolicy Bypass -File scripts/check-forbidden-terms.ps1
 ```
+
+## Licencia
+
+[MIT](LICENSE).

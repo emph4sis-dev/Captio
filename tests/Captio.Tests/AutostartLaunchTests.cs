@@ -6,6 +6,7 @@ using Xunit.Abstractions;
 
 namespace Captio.Tests;
 
+[Trait("Category", "Desktop")]
 public class AutostartLaunchTests(ITestOutputHelper output)
 {
     private delegate bool EnumWindowsProc(nint hwnd, nint lParam);

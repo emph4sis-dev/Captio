@@ -25,6 +25,11 @@ public partial class App : Application
     {
         base.OnStartup(e);
 
+        // Only the Captio process itself becomes the tray app. A host that loads this assembly
+        // (the test runner, for example) gets the resources and windows without the tray,
+        // the global hotkey or the single-instance lock.
+        if (System.Reflection.Assembly.GetEntryAssembly() != typeof(App).Assembly) return;
+
         _singleInstance = new Mutex(initiallyOwned: true, @"Local\Captio.SingleInstance", out var createdNew);
         if (!createdNew)
         {
