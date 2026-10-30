@@ -1,6 +1,6 @@
 # Captio — Sistema visual
 
-Guía breve para la web (`website/`), el README y cualquier material público. La interfaz de la aplicación sigue el tema Fluent de Windows; esta guía toma de ella su acento y su barra de edición.
+Guía breve para el README, las imágenes y cualquier material público. La interfaz de la aplicación sigue el tema Fluent de Windows; esta guía toma de ella su acento y su barra de edición.
 
 ## Idea
 
@@ -40,30 +40,18 @@ El tema se elige con `prefers-color-scheme`.
 
 ## Movimiento
 
-El movimiento explica el producto; no decora. Hay **un solo momento animado**: el flujo del héroe (seleccionar → barra → anotar → censurar → listo).
+Para cualquier material animado futuro (una web, un vídeo de demostración), el movimiento explica el producto; no decora.
 
-| Token | Valor | Uso |
-|---|---|---|
-| `--ease-out` | `cubic-bezier(0.16, 1, 0.3, 1)` | Entradas |
-| `--ease-in` | `cubic-bezier(0.4, 0, 1, 1)` | Salidas |
-| `--dur-instant` | 120 ms | Respuesta a pulsaciones |
-| `--dur-fast` | 200 ms | Hover y foco |
-| `--dur-layout` | 400 ms | Cambios de disposición |
-| `--dur-stage` | 600 ms | Cada etapa del héroe (máximo 800 ms) |
-
-**Reglas**
-- Se anima solo `transform`, `opacity` y `clip-path`. Las salidas duran un 30 % menos que las entradas.
-- Sin rebotes, paralaje, secuestro del scroll, cursores propios ni animaciones infinitas.
-- La animación se reproduce una vez cuando entra en pantalla y se detiene si deja de verse o si la pestaña se oculta.
-- El contenido es visible sin JavaScript: el estado final es el estado por defecto.
-- Con `prefers-reduced-motion: reduce` se muestra directamente el estado final, sin desplazamientos.
+- Curva de entrada `cubic-bezier(0.16, 1, 0.3, 1)`. Duraciones de 120 ms para respuestas, de 200 ms para hover y foco, y de 400 ms para cambios de disposición. Las salidas duran un 30 % menos que las entradas.
+- Solo se animan `transform`, `opacity` y `clip-path`. Sin rebotes, paralaje ni animaciones infinitas.
+- Siempre con una variante para `prefers-reduced-motion` que muestre el estado final.
 
 ## Imágenes
 
 Las capturas se generan con el editor real sobre una pantalla de demostración sintética (`tests/Captio.Tests/DocumentationImagesTests.cs`): sin escritorio real, archivos ni datos personales. Para regenerarlas:
 
 ```bash
-$env:CAPTIO_DOCS_IMAGES_DIR = "website/assets"; dotnet test tests/Captio.Tests --filter DocumentationImages
+$env:CAPTIO_DOCS_IMAGES_DIR = "docs/images"; dotnet test tests/Captio.Tests --filter DocumentationImages
 ```
 
-Los iconos de la web se dibujan en SVG con un trazo uniforme. Nunca se usan emojis como iconos.
+Los iconos se dibujan en SVG con un trazo uniforme. Nunca se usan emojis como iconos.

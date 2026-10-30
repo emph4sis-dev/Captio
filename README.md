@@ -1,5 +1,5 @@
 <p align="center">
-  <img src="website/assets/icon.svg" width="72" height="72" alt="">
+  <img src="docs/images/icon.svg" width="72" height="72" alt="">
 </p>
 
 <h1 align="center">Captio</h1>
@@ -23,7 +23,7 @@
 </p>
 
 <p align="center">
-  <img src="website/assets/editor.png" width="800" alt="El editor de Captio sobre una pantalla de demostración: una región seleccionada con un subrayado, un rectángulo y una flecha en rojo, un correo tapado con una censura negra y la barra de edición vertical a la derecha.">
+  <img src="docs/images/editor.png" width="800" alt="El editor de Captio sobre una pantalla de demostración: una región seleccionada con un subrayado, un rectángulo y una flecha en rojo, un correo tapado con una censura negra y la barra de edición vertical a la derecha.">
 </p>
 
 ## Por qué Captio
@@ -118,8 +118,7 @@ src/Captio.Core   Lógica sin interfaz: anotaciones, censura, PNG, carpeta de ca
 src/Captio        Aplicación WPF: bandeja, atajo global, editor de captura y ventanas
 tests/            Pruebas del núcleo y de la interfaz (aplanado, renderizado, arranque)
 installer/        Instalador por usuario (Inno Setup)
-website/          Página del proyecto, estática y sin dependencias
-docs/             Especificación funcional (SPEC.md) y sistema visual (DESIGN.md)
+docs/             Especificación (SPEC.md), sistema visual (DESIGN.md) e imágenes
 ```
 
 El comportamiento completo, los casos límite y los criterios de aceptación están en [docs/SPEC.md](docs/SPEC.md).

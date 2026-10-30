@@ -13,10 +13,10 @@ using Captio.Core.Storage;
 namespace Captio.Tests;
 
 /// <summary>
-/// Renders the images used by the README and the website from the real editor, over a synthetic
+/// Renders the images used by the README and the social preview from the real editor, over a synthetic
 /// demo screen: no real desktop, files or personal data. Always renders (catching regressions);
 /// writes the PNGs only when CAPTIO_DOCS_IMAGES_DIR is set, for example:
-///   $env:CAPTIO_DOCS_IMAGES_DIR = "website/assets"; dotnet test tests/Captio.Tests --filter DocumentationImages
+///   $env:CAPTIO_DOCS_IMAGES_DIR = "docs/images"; dotnet test tests/Captio.Tests --filter DocumentationImages
 /// </summary>
 [Trait("Category", "Desktop")]
 public sealed class DocumentationImagesTests : IDisposable
