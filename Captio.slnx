@@ -1,0 +1,10 @@
+<Solution>
+  <Folder Name="/src/">
+    <Project Path="src/Captio.Core/Captio.Core.csproj" />
+    <Project Path="src/Captio/Captio.csproj" />
+  </Folder>
+  <Folder Name="/tests/">
+    <Project Path="tests/Captio.Core.Tests/Captio.Core.Tests.csproj" />
+    <Project Path="tests/Captio.Tests/Captio.Tests.csproj" />
+  </Folder>
+</Solution>

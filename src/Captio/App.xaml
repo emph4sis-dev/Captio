@@ -1,0 +1,45 @@
+﻿<Application x:Class="Captio.App"
+             xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+             xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+             ShutdownMode="OnExplicitShutdown"
+             ThemeMode="System">
+    <Application.Resources>
+        <ResourceDictionary>
+            <SolidColorBrush x:Key="Captio.Bar" Color="#F21B1C21" />
+            <SolidColorBrush x:Key="Captio.BarBorder" Color="#3A3C45" />
+            <SolidColorBrush x:Key="Captio.Text" Color="#F4F4F5" />
+            <SolidColorBrush x:Key="Captio.Hover" Color="#2D2F37" />
+            <SolidColorBrush x:Key="Captio.Checked" Color="#39427A" />
+            <SolidColorBrush x:Key="Captio.Accent" Color="#7C9CFF" />
+
+            <ControlTemplate x:Key="Captio.BarButtonTemplate" TargetType="ButtonBase">
+                <Border x:Name="Chrome" Background="Transparent" CornerRadius="8" Padding="8,6" Margin="1,0">
+                    <ContentPresenter HorizontalAlignment="Center" VerticalAlignment="Center" />
+                </Border>
+                <ControlTemplate.Triggers>
+                    <Trigger Property="IsMouseOver" Value="True">
+                        <Setter TargetName="Chrome" Property="Background" Value="{StaticResource Captio.Hover}" />
+                    </Trigger>
+                    <Trigger Property="ToggleButton.IsChecked" Value="True">
+                        <Setter TargetName="Chrome" Property="Background" Value="{StaticResource Captio.Checked}" />
+                    </Trigger>
+                    <Trigger Property="IsEnabled" Value="False">
+                        <Setter Property="Opacity" Value="0.35" />
+                    </Trigger>
+                </ControlTemplate.Triggers>
+            </ControlTemplate>
+
+            <Style x:Key="Captio.BarButton" TargetType="Button">
+                <Setter Property="Foreground" Value="{StaticResource Captio.Text}" />
+                <Setter Property="FontFamily" Value="Segoe UI Variable Text, Segoe UI" />
+                <Setter Property="FontSize" Value="13" />
+                <Setter Property="Template" Value="{StaticResource Captio.BarButtonTemplate}" />
+            </Style>
+
+            <Style x:Key="Captio.BarToggle" TargetType="ToggleButton">
+                <Setter Property="Foreground" Value="{StaticResource Captio.Text}" />
+                <Setter Property="Template" Value="{StaticResource Captio.BarButtonTemplate}" />
+            </Style>
+        </ResourceDictionary>
+    </Application.Resources>
+</Application>

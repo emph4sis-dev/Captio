@@ -1,0 +1,11 @@
+bin/
+obj/
+.vs/
+*.user
+*.suo
+TestResults/
+publish/
+
+# Research material never belongs in this repository.
+research/
+private/
