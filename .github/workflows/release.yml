@@ -1,7 +1,11 @@
 # Builds the Windows installer and publishes it as a GitHub release when a version tag is pushed:
-#   git tag v1.0.0 && git push origin v1.0.0
-# Running it by hand (Actions → Release → Run workflow) builds the installer as a downloadable
-# artifact without publishing a release.
+#   git tag v1.0.1 && git push origin v1.0.1
+# Running it by hand (Actions → Release → Run workflow) tests and builds the installer as a
+# downloadable artifact without publishing anything.
+#
+# Hardening: every action is pinned to a full commit SHA (version in the comment), each job gets
+# only the permissions it needs, checkouts drop their credentials, Inno Setup is downloaded at a
+# fixed version and verified by SHA-256, and only the tag-gated release job can write.
 name: Release
 
 on:
@@ -9,16 +13,29 @@ on:
     tags: ['v*']
   workflow_dispatch:
 
-permissions:
-  contents: write
+permissions: {}
+
+concurrency:
+  group: release-${{ github.ref }}
+  cancel-in-progress: false
+
+env:
+  DOTNET_NOLOGO: 'true'
+  DOTNET_CLI_TELEMETRY_OPTOUT: 'true'
+  INNO_SETUP_URL: https://github.com/jrsoftware/issrc/releases/download/is-6_7_3/innosetup-6.7.3.exe
+  INNO_SETUP_SHA256: 9C73C3BAE7ED48D44112A0F48E66742C00090BDB5BEF71D9D3C056C66E97B732
 
 jobs:
-  installer:
+  test:
     runs-on: windows-latest
+    permissions:
+      contents: read
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
 
-      - uses: actions/setup-dotnet@v4
+      - uses: actions/setup-dotnet@a98b56852c35b8e3190ac28c8c2271da59106c68 # v6.0.0
         with:
           dotnet-version: '10.0.x'
 
@@ -26,38 +43,100 @@ jobs:
         # Tests that open real windows need an interactive desktop, which hosted runners do not guarantee.
         run: dotnet test Captio.slnx -c Release --filter "Category!=Desktop"
 
-      - name: Install Inno Setup
+  build:
+    needs: test
+    runs-on: windows-latest
+    permissions:
+      contents: read
+      id-token: write      # signs the build provenance attestation
+      attestations: write  # stores it
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+
+      - uses: actions/setup-dotnet@a98b56852c35b8e3190ac28c8c2271da59106c68 # v6.0.0
+        with:
+          dotnet-version: '10.0.x'
+
+      - name: Install Inno Setup (pinned and verified)
         shell: pwsh
         run: |
-          if (-not (Test-Path "${env:ProgramFiles(x86)}\Inno Setup 6\ISCC.exe")) {
-            choco install innosetup --no-progress -y
-          }
+          $installer = Join-Path $env:RUNNER_TEMP 'innosetup.exe'
+          Invoke-WebRequest -Uri $env:INNO_SETUP_URL -OutFile $installer
+          $hash = (Get-FileHash $installer -Algorithm SHA256).Hash
+          if ($hash -ne $env:INNO_SETUP_SHA256) { throw "Inno Setup checksum mismatch: $hash" }
+          Start-Process $installer -ArgumentList '/VERYSILENT', '/SUPPRESSMSGBOXES', '/NORESTART', '/SP-' -Wait
+
+      - name: Resolve version
+        id: version
+        shell: pwsh
+        run: |
+          $version = if ($env:GITHUB_REF_TYPE -eq 'tag') { $env:GITHUB_REF_NAME.TrimStart('v') }
+                     else { ([xml](Get-Content Directory.Build.props)).Project.PropertyGroup.Version }
+          if ($version -notmatch '^\d+\.\d+\.\d+$') { throw "Unexpected version '$version'." }
+          "version=$version" >> $env:GITHUB_OUTPUT
 
       - name: Build installer
         shell: pwsh
+        env:
+          VERSION: ${{ steps.version.outputs.version }}
+        run: ./scripts/build-installer.ps1 -Version $env:VERSION
+
+      - name: Write SHA-256 checksum
+        shell: pwsh
         run: |
-          $version = if ('${{ github.ref_type }}' -eq 'tag') { '${{ github.ref_name }}'.TrimStart('v') } else { '' }
-          ./scripts/build-installer.ps1 -Version $version
+          Get-ChildItem artifacts/installer/*.exe | ForEach-Object {
+            $hash = (Get-FileHash $_.FullName -Algorithm SHA256).Hash.ToLowerInvariant()
+            "$hash  $($_.Name)" | Set-Content -Encoding ascii -NoNewline "$($_.FullName).sha256"
+            "$($_.Name): $hash" >> $env:GITHUB_STEP_SUMMARY
+          }
+
+      - name: Attest build provenance
+        if: github.ref_type == 'tag'
+        uses: actions/attest-build-provenance@4d101475d8b20a2381f78447822ac1eab6504dd8 # v4.2.2
+        with:
+          subject-path: artifacts/installer/*.exe
 
       - name: Keep the installer as a build artifact
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
         with:
           name: Captio-Setup
-          path: artifacts/installer/*.exe
+          path: |
+            artifacts/installer/*.exe
+            artifacts/installer/*.sha256
+          if-no-files-found: error
+
+  release:
+    if: github.ref_type == 'tag'
+    needs: build
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write  # create the release; the only job that can write
+    steps:
+      - uses: actions/download-artifact@9000827ccba6bdab643e8b6fd33ac0654aef8333 # v8.0.2
+        with:
+          name: Captio-Setup
+          path: dist
 
       - name: Publish release
-        if: github.ref_type == 'tag'
-        uses: softprops/action-gh-release@v2
-        with:
-          name: Captio ${{ github.ref_name }}
-          files: artifacts/installer/*.exe
-          generate_release_notes: true
-          body: |
-            ## Instalar
+        env:
+          GH_TOKEN: ${{ github.token }}
+          TAG: ${{ github.ref_name }}
+          REPO: ${{ github.repository }}
+        run: |
+          cat > notes.md <<'NOTES'
+          ## Instalar
 
-            1. Descarga el instalador **Captio-Setup-….exe** (abajo, en *Assets*).
-            2. Ábrelo. No pide permisos de administrador: se instala solo para tu usuario.
-            3. Si Windows SmartScreen avisa de una aplicación no reconocida, pulsa *Más información → Ejecutar de todas formas* (el instalador todavía no está firmado).
+          1. Descarga el instalador **Captio-Setup-….exe** (abajo, en *Assets*).
+          2. Ábrelo. No pide permisos de administrador: se instala solo para tu usuario.
+          3. Si Windows SmartScreen avisa de una aplicación no reconocida, pulsa *Más información → Ejecutar de todas formas* (el instalador todavía no está firmado).
 
-            Captio queda en la bandeja del sistema. Pulsa **ImpPant** para capturar.
-            Requiere Windows 10 (1809) o Windows 11 de 64 bits. No hace falta instalar .NET.
+          Captio queda en la bandeja del sistema. Pulsa **ImpPant** para capturar.
+          Requiere Windows 10 (1809) o Windows 11 de 64 bits. No hace falta instalar .NET.
+
+          **Verificar la descarga:** cada instalador incluye su archivo `.sha256` y una atestación de procedencia.
+          Con la CLI de GitHub: `gh attestation verify Captio-Setup-….exe --repo emph4sis-dev/Captio`
+          NOTES
+          gh release create "$TAG" dist/* --repo "$REPO" --title "Captio $TAG" \
+            --notes-file notes.md --generate-notes --verify-tag

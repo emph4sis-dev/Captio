@@ -1,0 +1,279 @@
+<!doctype html>
+<html lang="es">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta http-equiv="Content-Security-Policy" content="default-src 'none'; img-src 'self'; style-src 'self'; script-src 'self'; base-uri 'none'; form-action 'none'">
+  <meta name="referrer" content="no-referrer">
+  <title>Captio · Capturas de pantalla para Windows</title>
+  <meta name="description" content="Captura una zona de la pantalla, señálala o censúrala, y cópiala o guárdala. Gratis, de código abierto y sin conexión a internet.">
+  <meta name="color-scheme" content="light dark">
+  <meta name="theme-color" content="#F6F7F9" media="(prefers-color-scheme: light)">
+  <meta name="theme-color" content="#0F1115" media="(prefers-color-scheme: dark)">
+  <link rel="canonical" href="https://emph4sis-dev.github.io/Captio/">
+  <meta property="og:type" content="website">
+  <meta property="og:title" content="Captio · Capturas de pantalla para Windows">
+  <meta property="og:description" content="Captura, señala y censura en Windows. Código abierto, sin cuentas y sin conexión.">
+  <meta property="og:url" content="https://emph4sis-dev.github.io/Captio/">
+  <meta property="og:image" content="https://emph4sis-dev.github.io/Captio/assets/social-preview.png">
+  <meta property="og:image:width" content="1280">
+  <meta property="og:image:height" content="640">
+  <meta property="og:image:alt" content="Captio: el editor de capturas con una selección anotada y la barra de herramientas.">
+  <meta name="twitter:card" content="summary_large_image">
+  <link rel="icon" href="assets/icon.svg" type="image/svg+xml">
+  <link rel="icon" href="assets/favicon.ico" sizes="any">
+  <link rel="stylesheet" href="styles.css">
+  <script src="main.js" defer></script>
+</head>
+<body>
+  <a class="skip" href="#contenido">Saltar al contenido</a>
+
+  <!-- One icon set, drawn for this page: 24-unit grid, 1.6 stroke, round caps. -->
+  <svg class="sprite" aria-hidden="true" focusable="false">
+    <symbol id="i-move" viewBox="0 0 24 24"><path d="M12 3v18M3 12h18M12 3l-3 3M12 3l3 3M12 21l-3-3M12 21l3-3M3 12l3-3M3 12l3 3M21 12l-3-3M21 12l-3 3"/></symbol>
+    <symbol id="i-pencil" viewBox="0 0 24 24"><path d="M4 20l1-4L16 5l3 3L8 19l-4 1zM14 7l3 3"/></symbol>
+    <symbol id="i-arrow" viewBox="0 0 24 24"><path d="M6 18L18 6M9 6h9v9"/></symbol>
+    <symbol id="i-line" viewBox="0 0 24 24"><path d="M4 12h16"/></symbol>
+    <symbol id="i-rect" viewBox="0 0 24 24"><rect x="4" y="6" width="16" height="12" rx="1"/></symbol>
+    <symbol id="i-ellipse" viewBox="0 0 24 24"><ellipse cx="12" cy="12" rx="8" ry="6"/></symbol>
+    <symbol id="i-redact" viewBox="0 0 24 24"><path d="M4 6h11M4 18h13"/><rect x="4" y="9.5" width="16" height="5" rx="1" fill="currentColor" stroke="none"/></symbol>
+    <symbol id="i-color" viewBox="0 0 24 24"><path d="M12 4a8 8 0 1 0 0 16c1.2 0 1.8-.8 1.8-1.7 0-1.2-1-1.6-1-2.6 0-1 .8-1.7 1.9-1.7H17a3 3 0 0 0 3-3C20 7 16.4 4 12 4z"/><circle cx="8" cy="11" r="1" fill="currentColor" stroke="none"/><circle cx="11" cy="8" r="1" fill="currentColor" stroke="none"/><circle cx="15" cy="8" r="1" fill="currentColor" stroke="none"/></symbol>
+    <symbol id="i-undo" viewBox="0 0 24 24"><path d="M9 7L5 11l4 4M5 11h9a5 5 0 0 1 0 10h-2"/></symbol>
+    <symbol id="i-redo" viewBox="0 0 24 24"><path d="M15 7l4 4-4 4M19 11h-9a5 5 0 0 0 0 10h2"/></symbol>
+    <symbol id="i-trash" viewBox="0 0 24 24"><path d="M5 7h14M10 7V5h4v2M7 7l1 13h8l1-13"/></symbol>
+    <symbol id="i-copy" viewBox="0 0 24 24"><rect x="8" y="8" width="11" height="11" rx="2"/><path d="M16 8V6a1 1 0 0 0-1-1H6a1 1 0 0 0-1 1v9a1 1 0 0 0 1 1h2"/></symbol>
+    <symbol id="i-save" viewBox="0 0 24 24"><path d="M5 5h11l3 3v11H5zM8 5v5h7V5M8 19v-5h8v5"/></symbol>
+    <symbol id="i-close" viewBox="0 0 24 24"><path d="M6 6l12 12M18 6L6 18"/></symbol>
+    <symbol id="i-shield" viewBox="0 0 24 24"><path d="M12 3l7 3v5c0 5-3 8.5-7 10-4-1.5-7-5-7-10V6z"/></symbol>
+    <symbol id="i-offline" viewBox="0 0 24 24"><path d="M4 9a12 12 0 0 1 16 0M7 12.5a8 8 0 0 1 10 0M10 16a3.5 3.5 0 0 1 4 0M4 4l16 16"/></symbol>
+    <symbol id="i-file" viewBox="0 0 24 24"><path d="M7 3h7l4 4v14H7zM14 3v4h4"/></symbol>
+    <symbol id="i-folder" viewBox="0 0 24 24"><path d="M3 7a1 1 0 0 1 1-1h5l2 2h9a1 1 0 0 1 1 1v9a1 1 0 0 1-1 1H4a1 1 0 0 1-1-1z"/></symbol>
+    <symbol id="i-download" viewBox="0 0 24 24"><path d="M12 4v11M7 10l5 5 5-5M5 20h14"/></symbol>
+    <symbol id="i-github" viewBox="0 0 24 24"><path d="M9 19c-4 1.3-4-2-6-2.5M15 21v-3.4c0-1 .1-1.4-.5-2 2.8-.3 5.5-1.4 5.5-6a4.7 4.7 0 0 0-1.3-3.2 4.3 4.3 0 0 0-.1-3.2s-1-.3-3.4 1.3a11.6 11.6 0 0 0-6.2 0C6.6 2.9 5.6 3.2 5.6 3.2a4.3 4.3 0 0 0-.1 3.2A4.7 4.7 0 0 0 4.2 9.6c0 4.6 2.7 5.7 5.5 6-.6.6-.6 1.2-.5 2V21"/></symbol>
+  </svg>
+
+  <header class="site-header">
+    <div class="wrap header-row">
+      <a class="brand" href="#inicio" aria-label="Captio, inicio">
+        <img src="assets/icon.svg" width="28" height="28" alt="">
+        <span>Captio</span>
+      </a>
+      <nav class="site-nav" aria-label="Secciones">
+        <a href="#herramientas">Herramientas</a>
+        <a href="#privacidad">Privacidad</a>
+        <a href="#atajos">Atajos</a>
+        <a href="https://github.com/emph4sis-dev/Captio">GitHub</a>
+      </nav>
+      <a class="btn btn-small" href="https://github.com/emph4sis-dev/Captio/releases/latest">Descargar</a>
+    </div>
+  </header>
+
+  <main id="contenido">
+    <section class="hero" id="inicio" aria-labelledby="hero-title">
+      <div class="wrap hero-grid">
+        <div class="hero-copy">
+          <h1 id="hero-title">Captura, señala y censura en&nbsp;segundos.</h1>
+          <p class="lede">Captio congela la pantalla con <kbd>ImpPant</kbd>, te deja marcar o tapar lo que importa y copia o guarda el resultado. Para Windows, gratis y sin conexión a internet.</p>
+          <div class="actions">
+            <a class="btn" href="https://github.com/emph4sis-dev/Captio/releases/latest">
+              <svg class="icon" aria-hidden="true"><use href="#i-download"/></svg>Descargar para Windows
+            </a>
+            <a class="btn btn-quiet" href="https://github.com/emph4sis-dev/Captio">
+              <svg class="icon" aria-hidden="true"><use href="#i-github"/></svg>Ver el código
+            </a>
+          </div>
+          <p class="meta">Versión 1.0.0 · Windows 10 y 11 (64 bits) · Licencia MIT</p>
+        </div>
+
+        <figure class="demo" data-demo aria-labelledby="demo-caption">
+          <div class="demo-screen" aria-hidden="true">
+            <div class="doc">
+              <div class="doc-bar">Resumen del pedido</div>
+              <div class="doc-body">
+                <p class="doc-title">Pedido 4821</p>
+                <p class="doc-sub">Material de oficina · 3 artículos</p>
+                <div class="doc-rows"><span></span><span></span><span></span></div>
+                <p class="doc-total"><span>Total</span><span>48,90 €</span></p>
+                <p class="doc-mail">Correo del cliente: <span class="doc-secret">cliente@ejemplo.com</span></p>
+              </div>
+            </div>
+            <div class="demo-dim"></div>
+            <div class="demo-selection"><span class="demo-size">900 × 590</span></div>
+            <svg class="demo-ink" viewBox="0 0 160 100">
+              <path class="demo-arrow" pathLength="1" d="M104 85L94.2 76.7"/>
+              <path class="demo-arrowhead" d="M91.2 74L95.6 75 92.7 78.3z"/>
+            </svg>
+            <div class="demo-toolbar">
+              <span class="tb is-on"><svg><use href="#i-move"/></svg></span>
+              <span class="tb"><svg><use href="#i-pencil"/></svg></span>
+              <span class="tb"><svg><use href="#i-arrow"/></svg></span>
+              <span class="tb"><svg><use href="#i-redact"/></svg></span>
+              <span class="tb tb-color"><svg><use href="#i-color"/></svg></span>
+              <span class="tb-sep"></span>
+              <span class="tb"><svg><use href="#i-undo"/></svg></span>
+              <span class="tb is-dim"><svg><use href="#i-redo"/></svg></span>
+              <span class="tb is-dim"><svg><use href="#i-trash"/></svg></span>
+              <span class="tb-sep"></span>
+              <span class="tb tb-copy"><svg><use href="#i-copy"/></svg></span>
+              <span class="tb"><svg><use href="#i-save"/></svg></span>
+              <span class="tb"><svg><use href="#i-close"/></svg></span>
+            </div>
+            <div class="demo-toast">Copiado al portapapeles</div>
+          </div>
+          <figcaption id="demo-caption">
+            <span>Seleccionar una zona, señalar, censurar y copiar: el flujo real de Captio.</span>
+            <button class="demo-replay" type="button" hidden>Repetir</button>
+          </figcaption>
+        </figure>
+      </div>
+    </section>
+
+    <section class="band" aria-labelledby="flow-title">
+      <div class="wrap">
+        <h2 id="flow-title">Tres pasos, una sola pantalla</h2>
+        <ol class="steps">
+          <li>
+            <h3>Captura</h3>
+            <p><kbd>ImpPant</kbd> congela todas las pantallas. Arrastra para elegir una zona; puedes moverla y redimensionarla antes de seguir.</p>
+          </li>
+          <li>
+            <h3>Edita</h3>
+            <p>Lápiz, flecha, línea, rectángulo, elipse y censura, sobre la misma captura y en cualquiera de los 8 colores.</p>
+          </li>
+          <li>
+            <h3>Copia o guarda</h3>
+            <p><kbd>Ctrl+C</kbd> la deja en el portapapeles y <kbd>Ctrl+S</kbd> la guarda en tu carpeta de capturas. <kbd>Esc</kbd> cancela sin dejar nada.</p>
+          </li>
+        </ol>
+      </div>
+    </section>
+
+    <section class="section" id="herramientas" aria-labelledby="tools-title">
+      <div class="wrap">
+        <h2 id="tools-title">Herramientas que no estorban</h2>
+        <p class="section-lede">La barra aparece junto a la selección, centrada, en el lado que prefieras. Al abrirse está activa la herramienta de mover, para que ajustes la zona antes de dibujar.</p>
+        <div class="tools-grid">
+          <ul class="tool-list">
+            <li><svg class="icon" aria-hidden="true"><use href="#i-move"/></svg><div><strong>Seleccionar y mover</strong><span>Mueve la zona o cualquier anotación. <kbd>V</kbd></span></div></li>
+            <li><svg class="icon" aria-hidden="true"><use href="#i-pencil"/></svg><div><strong>Lápiz</strong><span>Trazo a mano alzada. <kbd>P</kbd></span></div></li>
+            <li><svg class="icon" aria-hidden="true"><use href="#i-arrow"/></svg><div><strong>Formas</strong><span>Flecha, línea, rectángulo y elipse. Con <kbd>Mayús</kbd>: rectas a 45°, cuadrados y círculos.</span></div></li>
+            <li><svg class="icon" aria-hidden="true"><use href="#i-redact"/></svg><div><strong>Censura</strong><span>Un bloque negro sólido que reemplaza los píxeles. <kbd>R</kbd></span></div></li>
+            <li><svg class="icon" aria-hidden="true"><use href="#i-color"/></svg><div><strong>Color</strong><span>8 colores; Captio recuerda el último. <kbd>C</kbd></span></div></li>
+            <li><svg class="icon" aria-hidden="true"><use href="#i-undo"/></svg><div><strong>Deshacer y rehacer</strong><span>Sin límite mientras editas. <kbd>Ctrl+Z</kbd> · <kbd>Ctrl+Y</kbd></span></div></li>
+          </ul>
+          <figure class="shot">
+            <img src="assets/editor.png" width="1600" height="900" loading="lazy" decoding="async"
+                 alt="El editor real de Captio: una región seleccionada sobre un pedido de ejemplo, con el título subrayado, el total enmarcado, una flecha roja, el correo tapado con una censura negra y la barra de edición vertical a la derecha.">
+            <figcaption>El editor real, sobre una pantalla de demostración.</figcaption>
+          </figure>
+        </div>
+      </div>
+    </section>
+
+    <section class="section band" id="privacidad" aria-labelledby="privacy-title">
+      <div class="wrap privacy-grid">
+        <div>
+          <h2 id="privacy-title">Lo que tapas, desaparece</h2>
+          <p class="section-lede">La censura no es una capa encima: al copiar o guardar, los píxeles se sustituyen por negro opaco y la imagen final no tiene capas. El original sin censurar nunca se escribe en disco.</p>
+          <div class="redact-sample" aria-hidden="true">
+            <span>Correo del cliente:</span><span class="redact-bar"></span>
+          </div>
+        </div>
+        <ul class="facts">
+          <li><svg class="icon" aria-hidden="true"><use href="#i-offline"/></svg><div><strong>Sin red</strong><span>Captio no hace ninguna conexión, ni siquiera para buscar actualizaciones.</span></div></li>
+          <li><svg class="icon" aria-hidden="true"><use href="#i-shield"/></svg><div><strong>Sin cuentas ni telemetría</strong><span>No hay registro, nube ni datos de uso.</span></div></li>
+          <li><svg class="icon" aria-hidden="true"><use href="#i-file"/></svg><div><strong>PNG limpios</strong><span>Solo los datos necesarios para mostrar la imagen: sin texto, fechas ni EXIF.</span></div></li>
+        </ul>
+      </div>
+    </section>
+
+    <section class="section" id="biblioteca" aria-labelledby="library-title">
+      <div class="wrap">
+        <h2 id="library-title">Tu carpeta, tus reglas</h2>
+        <div class="split">
+          <div>
+            <h3><svg class="icon" aria-hidden="true"><use href="#i-folder"/></svg>Biblioteca</h3>
+            <p>Las capturas se guardan en <em>Imágenes\Screenshots</em>, la carpeta de capturas de Windows (o la que elijas), con nombres como los del sistema: <code>Captura de pantalla 2026-10-30 013340.png</code>. La biblioteca es esa misma carpeta: filtra por fecha, copia, arrastra, exporta, renombra o borra.</p>
+          </div>
+          <div>
+            <h3><svg class="icon" aria-hidden="true"><use href="#i-move"/></svg>Personalización</h3>
+            <ul class="plain">
+              <li>Atajo de captura configurable.</li>
+              <li>Barra arriba, abajo, a la izquierda o a la derecha.</li>
+              <li><kbd>Enter</kbd> copia o guarda, como prefieras.</li>
+              <li>Guardar también al copiar.</li>
+              <li>Iniciar con Windows, sin abrir ventanas.</li>
+            </ul>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <section class="section band" id="atajos" aria-labelledby="keys-title">
+      <div class="wrap">
+        <h2 id="keys-title">Atajos</h2>
+        <table class="keys">
+          <caption class="visually-hidden">Atajos de teclado de Captio</caption>
+          <thead><tr><th scope="col">Acción</th><th scope="col">Atajo</th></tr></thead>
+          <tbody>
+            <tr><td>Capturar</td><td><kbd>ImpPant</kbd> <span class="note">configurable</span></td></tr>
+            <tr><td>Seleccionar · lápiz · forma · censura</td><td><kbd>V</kbd> <kbd>P</kbd> <kbd>F</kbd> <kbd>R</kbd></td></tr>
+            <tr><td>Menú de formas · panel de color</td><td><kbd>Mayús+F</kbd> <kbd>C</kbd></td></tr>
+            <tr><td>Deshacer · rehacer · eliminar anotación</td><td><kbd>Ctrl+Z</kbd> <kbd>Ctrl+Y</kbd> <kbd>Supr</kbd></td></tr>
+            <tr><td>Copiar · guardar</td><td><kbd>Ctrl+C</kbd> <kbd>Ctrl+S</kbd></td></tr>
+            <tr><td>Cancelar</td><td><kbd>Ctrl+X</kbd> <kbd>Esc</kbd></td></tr>
+          </tbody>
+        </table>
+      </div>
+    </section>
+
+    <section class="section" id="compatibilidad" aria-labelledby="compat-title">
+      <div class="wrap split">
+        <div>
+          <h2 id="compat-title">Compatibilidad</h2>
+          <dl class="specs">
+            <div><dt>Sistema</dt><dd>Windows 10 (1809 o posterior) y Windows 11, 64 bits</dd></div>
+            <div><dt>Instalación</dt><dd>Por usuario, sin permisos de administrador</dd></div>
+            <div><dt>Requisitos</dt><dd>Ninguno: el instalador incluye .NET</dd></div>
+            <div><dt>Monitores</dt><dd>Varios, con escalas distintas</dd></div>
+          </dl>
+        </div>
+        <div class="callout">
+          <h3>Sobre el aviso de SmartScreen</h3>
+          <p>El instalador todavía no tiene firma digital, así que Windows puede avisar de una aplicación no reconocida. Pulsa <em>Más información → Ejecutar de todas formas</em>. El código es abierto y cada versión se compila en GitHub a partir de él.</p>
+        </div>
+      </div>
+    </section>
+
+    <section class="section band" id="hoja-de-ruta" aria-labelledby="roadmap-title">
+      <div class="wrap">
+        <h2 id="roadmap-title">Hoja de ruta</h2>
+        <ul class="roadmap">
+          <li><span class="status">Pendiente</span><div><strong>Clips de video MP4</strong><span>Grabar una zona de la pantalla, sin audio. Aún no disponible.</span></div></li>
+          <li><span class="status">Pendiente</span><div><strong>Firma digital del instalador</strong><span>Para que Windows deje de mostrar el aviso de SmartScreen.</span></div></li>
+        </ul>
+      </div>
+    </section>
+
+    <section class="cta" aria-labelledby="cta-title">
+      <div class="wrap cta-inner">
+        <h2 id="cta-title">Captura mejor, sin depender de nadie.</h2>
+        <a class="btn" href="https://github.com/emph4sis-dev/Captio/releases/latest">
+          <svg class="icon" aria-hidden="true"><use href="#i-download"/></svg>Descargar Captio
+        </a>
+      </div>
+    </section>
+  </main>
+
+  <footer class="site-footer">
+    <div class="wrap footer-row">
+      <p><img src="assets/icon.svg" width="20" height="20" alt=""> Captio 1.0.0</p>
+      <ul>
+        <li><a href="https://github.com/emph4sis-dev/Captio">Repositorio</a></li>
+        <li><a href="https://github.com/emph4sis-dev/Captio/blob/main/docs/SPEC.md">Especificación</a></li>
+        <li><a href="https://github.com/emph4sis-dev/Captio/blob/main/LICENSE">Licencia MIT</a></li>
+      </ul>
+    </div>
+  </footer>
+</body>
+</html>

@@ -1,86 +1,94 @@
-# Captio
+<p align="center">
+  <img src="website/assets/icon.svg" width="72" height="72" alt="">
+</p>
 
-Herramienta de captura de pantalla para Windows centrada en rapidez y privacidad: captura una región, señálala con el lápiz, flechas, líneas, rectángulos o elipses, censúrala con bloques negros, y decide tú dónde termina la imagen.
+<h1 align="center">Captio</h1>
 
-- Sin cuentas, telemetría ni nube propia.
-- Sin ninguna actividad de red: todo ocurre en tu equipo.
-- Las censuras reemplazan los píxeles: la imagen final no tiene capas.
+<p align="center">
+  Captura una zona de la pantalla, señálala o censúrala, y cópiala o guárdala.<br>
+  Para Windows. Gratis, de código abierto y sin conexión a internet.
+</p>
 
-> «Captio» es un nombre provisional.
+<p align="center">
+  <a href="https://github.com/emph4sis-dev/Captio/actions/workflows/release.yml"><img src="https://github.com/emph4sis-dev/Captio/actions/workflows/release.yml/badge.svg" alt="Estado de la compilación"></a>
+  <a href="https://github.com/emph4sis-dev/Captio/releases/latest"><img src="https://img.shields.io/github/v/release/emph4sis-dev/Captio?label=versi%C3%B3n" alt="Última versión"></a>
+  <img src="https://img.shields.io/badge/plataforma-Windows%2010%20%7C%2011-4F5BD5" alt="Plataforma: Windows 10 y 11">
+  <a href="LICENSE"><img src="https://img.shields.io/github/license/emph4sis-dev/Captio?label=licencia" alt="Licencia MIT"></a>
+</p>
 
-## Instalar
+<p align="center">
+  <a href="https://github.com/emph4sis-dev/Captio/releases/latest"><b>Descargar la última versión</b></a> ·
+  <a href="#cómo-funciona">Ver cómo funciona</a> ·
+  <a href="#compilar-desde-el-código">Compilar desde el código</a>
+</p>
 
-1. Descarga **Captio-Setup-x.y.z.exe** desde [Releases](https://github.com/emph4sis-dev/captio/releases/latest).
-2. Ábrelo. No pide permisos de administrador: se instala solo para tu usuario, en `%LOCALAPPDATA%\Programs\Captio`, con acceso en el menú Inicio.
-3. Si Windows SmartScreen avisa de una aplicación no reconocida, pulsa *Más información → Ejecutar de todas formas*. El instalador todavía no está firmado digitalmente.
+<p align="center">
+  <img src="website/assets/editor.png" width="800" alt="El editor de Captio sobre una pantalla de demostración: una región seleccionada con un subrayado, un rectángulo y una flecha en rojo, un correo tapado con una censura negra y la barra de edición vertical a la derecha.">
+</p>
 
-Captio queda en la bandeja del sistema; pulsa **ImpPant** para capturar. Requiere Windows 10 (1809) u 11 de 64 bits y no necesita instalar .NET: lo incluye.
+## Por qué Captio
 
-Para desinstalar: *Configuración de Windows → Aplicaciones → Captio → Desinstalar*. Se borran el programa y su entrada de *Iniciar con Windows*; tus capturas y tu configuración (`%APPDATA%\Captio`) se conservan.
+- **Captura rápida.** `ImpPant` congela la pantalla y eliges una zona al instante. Captio vive en la bandeja y casi no consume recursos mientras espera.
+- **Edición directa.** Lápiz, flecha, línea, rectángulo, elipse y censura, en la misma pantalla de captura. Sin abrir otro programa.
+- **Todo queda en tu equipo.** No usa red, cuentas ni nube. La censura reemplaza los píxeles por negro antes de copiar o guardar, y los PNG se guardan sin metadatos.
 
-## Estado
+## Cómo funciona
 
-Versión 1.0. La especificación completa está en [docs/SPEC.md](docs/SPEC.md).
+1. **Captura:** pulsa `ImpPant` y arrastra para elegir una zona. Puedes moverla y redimensionarla.
+2. **Edita:** marca con el lápiz o una forma en cualquiera de los 8 colores, o tapa información sensible con la censura.
+3. **Termina:** `Ctrl+C` copia la imagen y `Ctrl+S` la guarda en tu carpeta de capturas de Windows. `Esc` o `Ctrl+X` cancelan sin dejar rastro.
 
-| Función | Estado |
+## Funciones
+
+| | |
 |---|---|
-| Captura de región con pantalla congelada (multimonitor, PerMonitorV2) | ✅ |
-| Lápiz a mano alzada y formas: flecha, línea, rectángulo y elipse sin relleno; `Mayús` para línea recta a 45°, cuadrado o círculo | ✅ |
-| Censura sólida, deshacer, rehacer, eliminar | ✅ |
-| Selector compacto de 8 colores, recordado entre capturas | ✅ |
-| Barra de edición centrada en la selección: arriba, abajo, a la izquierda o a la derecha | ✅ |
-| Copiar (con copia guardada opcional), guardar en la carpeta de capturas | ✅ |
-| Biblioteca sobre la carpeta de capturas (rápida con miles de imágenes): filtro, copiar, arrastrar, exportar, renombrar, borrar | ✅ |
-| Iniciar con Windows | ✅ |
-| Clips MP4 sin audio | ⏳ pendiente (oculto en la interfaz) |
+| **Herramientas** | Seleccionar y mover, lápiz, flecha, línea, rectángulo y elipse (con `Mayús` se dibujan rectas a 45°, cuadrados y círculos), censura sólida, deshacer, rehacer y eliminar |
+| **Color** | Panel compacto con 8 colores; Captio recuerda el último |
+| **Barra de edición** | Arriba, abajo, a la izquierda o a la derecha de la selección, centrada respecto a ella |
+| **Guardado** | En *Imágenes\Screenshots* (o la carpeta que elijas), con nombres como los de Windows: `Captura de pantalla 2026-10-30 013340.png` |
+| **Biblioteca** | Es tu carpeta de capturas: filtrar por fecha, copiar, arrastrar, exportar, renombrar y borrar |
+| **Opciones** | Atajo configurable, acción de `Enter`, guardar también al copiar e iniciar con Windows |
 
-## Uso
+## Instalación
+
+1. Descarga **Captio-Setup-x.y.z.exe** desde [Releases](https://github.com/emph4sis-dev/Captio/releases/latest).
+2. Ábrelo. No pide permisos de administrador: se instala solo para tu usuario.
+3. **Aviso de SmartScreen:** el instalador todavía no tiene firma digital, así que Windows puede mostrar «aplicación no reconocida». Pulsa *Más información → Ejecutar de todas formas*. Las versiones nuevas incluyen su archivo `.sha256` y una atestación de procedencia para verificar la descarga.
+
+Para desinstalar: *Configuración de Windows → Aplicaciones → Captio*. Tus capturas y tu configuración se conservan.
+
+## Atajos
 
 | Acción | Atajo |
 |---|---|
-| Capturar imagen | `ImpPant` (configurable) |
-| Seleccionar / lápiz / forma actual / censurar | `V` / `P` / `F` / `R` |
-| Menú de formas / panel de colores | clic en el botón, o `Mayús+F` / `C` |
-| Línea a 45°, cuadrado o círculo perfecto mientras dibujas | mantener `Mayús` |
-| Deshacer / rehacer / eliminar anotación | `Ctrl+Z` / `Ctrl+Y` / `Supr` |
-| Copiar / guardar | `Ctrl+C` / `Ctrl+S` |
-| Destino predeterminado | `Enter` |
-| Cancelar sin conservar nada | `Ctrl+X` (también `Esc`) |
+| Capturar | `ImpPant` (configurable) |
+| Seleccionar · lápiz · forma · censura | `V` · `P` · `F` · `R` |
+| Menú de formas · panel de color | `Mayús+F` · `C` |
+| Deshacer · rehacer · eliminar anotación | `Ctrl+Z` · `Ctrl+Y` · `Supr` |
+| Copiar · guardar | `Ctrl+C` · `Ctrl+S` |
+| Acción predeterminada | `Enter` |
+| Cancelar | `Ctrl+X` o `Esc` |
 
-Si `ImpPant` abre la herramienta de recortes del sistema, desactiva en Windows *Configuración → Accesibilidad → Teclado → Usar la tecla Imprimir pantalla para abrir la captura de pantalla*, o elige otro atajo en la configuración de Captio.
+Si `ImpPant` abre la herramienta de recortes de Windows, desactiva *Configuración → Accesibilidad → Teclado → Usar la tecla Imprimir pantalla para abrir la captura de pantalla*, o elige otro atajo en Captio.
 
-## Guardado
+## Privacidad
 
-- **`Ctrl+S`** guarda un PNG aplanado directamente en la **carpeta de capturas**, con el mismo nombre que usa Windows en su idioma: `Captura de pantalla 2026-10-30 013340.png` en español, `Screenshot 2026-10-30 013340.png` en inglés, `Capture d'écran …` en francés. Así se ordenan por fecha y conviven con las capturas de Windows.
-- **`Ctrl+C`** copia la imagen al portapapeles. Si activas *Guardar automáticamente una copia al copiar*, Captio guarda también esa misma imagen en la carpeta de capturas, pero solo si la copia funcionó. Si el guardado falla, la imagen sigue en el portapapeles y verás un aviso.
-- La **carpeta de capturas** predeterminada es la de Windows: *Imágenes\Screenshots*, resuelta con `FOLDERID_Screenshots`. Así respeta OneDrive, las carpetas redirigidas y el idioma. Captio no crea ninguna subcarpeta propia. Puedes elegir otra en la sección *Guardado* de Configuración; *Volver a la de Windows* restablece la predeterminada.
-- La **biblioteca** es esa misma carpeta: lo que guardes, renombres o borres desde el Explorador también se ve en Captio.
-- Al **cambiar de carpeta**, Captio pregunta si quieres mover las capturas existentes. Las copia, verifica cada una y solo después borra los originales. Si algo falla, todo queda como estaba, también tras un corte de luz.
+- **Sin red:** Captio no hace ninguna conexión, ni siquiera para buscar actualizaciones.
+- **Sin cuentas, telemetría ni nube.**
+- **Censura destructiva:** los píxeles tapados se sustituyen por negro opaco en la imagen final, que no tiene capas. El original sin censurar nunca se escribe en disco.
+- **PNG limpios:** solo con los datos necesarios para mostrar la imagen, sin texto, fechas ni EXIF.
+- **Solo preferencias:** la configuración (`%APPDATA%\Captio\settings.json`) no guarda capturas ni datos de ellas.
 
-### Si usabas la versión 0.1
+## Compatibilidad
 
-La 0.1 guardaba las capturas en `%LOCALAPPDATA%\Captio\Library`. Si tienes capturas allí, Captio las sigue mostrando hasta que pulses *Mover a la carpeta de capturas de Windows* en Configuración. Al moverlas, los nombres que les pusiste pasan a ser nombres de archivo. Captio nunca las mueve sin preguntar.
+- Windows 10 (versión 1809 o posterior) y Windows 11, de 64 bits.
+- No hace falta instalar .NET: el instalador lo incluye.
+- Varios monitores con escalas distintas: cada monitor se captura por separado.
+- Los juegos en pantalla completa exclusiva tardan en mostrar la captura porque Windows tiene que sacarlos de ese modo; con *ventana sin bordes* es inmediata.
 
-## Juegos en pantalla completa
+## Compilar desde el código
 
-Si un juego (por ejemplo GTA V o FiveM) está en **pantalla completa exclusiva**, Windows tiene que sacarlo de ese modo para mostrar la pantalla de captura, y eso puede tardar segundos. Le pasa igual a cualquier herramienta de captura, incluida la de Windows. Para capturas instantáneas, pon el juego en **ventana sin bordes** (en GTA V: *Configuración → Gráficos → Tipo de pantalla*).
-
-## Consumo
-
-Captio está pensado para quedarse en la bandeja sin molestar: no usa CPU en reposo y devuelve la memoria a Windows después de cada captura (unos 32 MB en reposo, medidos en Windows 11).
-
-## Inicio automático
-
-En Configuración, sección *Sistema*: *Iniciar con Windows* (desactivado por defecto). Crea una entrada por usuario en `HKCU\Software\Microsoft\Windows\CurrentVersion\Run` y no necesita permisos de administrador. Captio arranca en la bandeja, sin abrir ventanas. Si desactivas la entrada desde el Administrador de tareas o la Configuración de Windows, Captio la muestra como desactivada.
-
-Datos locales:
-
-- Configuración: `%APPDATA%\Captio\settings.json`
-- Diario de traslados en curso: `%LOCALAPPDATA%\Captio\migration.json` (solo existe durante un traslado)
-
-## Compilar
-
-Requisitos: Windows 10/11 y .NET SDK 10.
+Requisitos: Windows 10 u 11 y el [SDK de .NET 10](https://dotnet.microsoft.com/download/dotnet/10.0).
 
 ```bash
 dotnet build
@@ -94,54 +102,36 @@ dotnet test
 dotnet run --project src/Captio
 ```
 
-
-## Publicar una versión
-
-El instalador se genera con [Inno Setup 6](https://jrsoftware.org/isinfo.php) a partir de [installer/Captio.iss](installer/Captio.iss):
+Para generar el instalador hace falta [Inno Setup 6](https://jrsoftware.org/isinfo.php):
 
 ```bash
 powershell -ExecutionPolicy Bypass -File scripts/build-installer.ps1
 ```
 
-Deja `artifacts/installer/Captio-Setup-<versión>.exe`: autocontenido (incluye .NET), win-x64 y precompilado con ReadyToRun para arrancar más rápido.
+Las versiones se publican solas: al subir una etiqueta `vX.Y.Z`, el flujo [Release](.github/workflows/release.yml) ejecuta las pruebas, construye el instalador y crea la versión con su suma SHA-256.
 
-Para publicar, sube una etiqueta de versión. El flujo [Release](.github/workflows/release.yml) ejecuta las pruebas, construye el instalador y crea la versión en GitHub con el instalador adjunto:
-
-```bash
-git tag v1.0.1
-```
-
-```bash
-git push origin v1.0.1
-```
-
-## Estructura
+## Arquitectura
 
 ```
-src/Captio.Core      Lógica sin interfaz: anotaciones y formas, censura, PNG, carpeta de capturas,
-                     biblioteca y migración, inicio automático, posición de la barra, configuración
-src/Captio           App WPF: bandeja, atajos globales, overlay de captura, ventanas
-tests/               Pruebas de Captio.Core, del aplanado en WPF y del arranque en la bandeja
-docs/SPEC.md         Especificación funcional
-scripts/             Comprobación de términos, instalador e icono
-installer/           Script de Inno Setup del instalador por usuario
+src/Captio.Core   Lógica sin interfaz: anotaciones, censura, PNG, carpeta de capturas,
+                  biblioteca, inicio con Windows, posición de la barra, configuración
+src/Captio        Aplicación WPF: bandeja, atajo global, editor de captura y ventanas
+tests/            Pruebas del núcleo y de la interfaz (aplanado, renderizado, arranque)
+installer/        Instalador por usuario (Inno Setup)
+website/          Página del proyecto, estática y sin dependencias
+docs/             Especificación funcional (SPEC.md) y sistema visual (DESIGN.md)
 ```
+
+El comportamiento completo, los casos límite y los criterios de aceptación están en [docs/SPEC.md](docs/SPEC.md).
+
+## Hoja de ruta
+
+- **Clips de video MP4** sin audio. Planificado; aún no disponible.
+- **Firma digital del instalador**, para que SmartScreen deje de avisar.
 
 ## Contribuir
 
-El repositorio no debe mencionar productos usados como referencia. Una lista de términos prohibidos, que vive fuera del repositorio (por defecto en `%USERPROFILE%\.captio-private\forbidden-terms.txt`) y nunca debe añadirse a él, se comprueba en cada `git push`: el hook `pre-push` revisa el árbol de trabajo, el contenido de los commits que se publican y sus mensajes, y bloquea el push si encuentra algo o si la lista no existe.
-
-Actívalo una vez por clon:
-
-```bash
-git config core.hooksPath .githooks
-```
-
-También se puede ejecutar a mano:
-
-```bash
-powershell -ExecutionPolicy Bypass -File scripts/check-forbidden-terms.ps1
-```
+Las contribuciones son bienvenidas: lee [CONTRIBUTING.md](CONTRIBUTING.md). Para informar de una vulnerabilidad, sigue [SECURITY.md](SECURITY.md) y no abras un issue público.
 
 ## Licencia
 

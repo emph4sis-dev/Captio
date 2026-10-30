@@ -128,6 +128,19 @@ internal sealed class OverlayWindow : Window
     /// <summary>The editing toolbar, exposed so tests can render it.</summary>
     internal FrameworkElement Toolbar => _toolbar;
 
+    /// <summary>
+    /// Shows a region as if the user had just selected it, with its toolbar. Only used to
+    /// render documentation images of the real editor; the app never calls it.
+    /// </summary>
+    internal void ShowRegionForPreview(Int32Rect region)
+    {
+        _region = region;
+        _toolbar.Visibility = Visibility.Visible;
+        UpdateToolbarState();
+        PositionToolbar();
+        Refresh();
+    }
+
     private double Scale => VisualTreeHelper.GetDpi(this).DpiScaleX;
 
     /// <summary>Clears this monitor's selection when the user starts one elsewhere.</summary>

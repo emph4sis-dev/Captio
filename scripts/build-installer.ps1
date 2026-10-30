@@ -30,11 +30,17 @@ $output = Join-Path $root 'artifacts\installer'
 if (Test-Path $publish) { Remove-Item $publish -Recurse -Force }
 
 Write-Host "Publishing Captio $Version..."
+# No debug symbols, and deterministic paths: the shipped binaries must not carry the
+# build machine's folders (which can include the developer's user name).
 dotnet publish (Join-Path $root 'src\Captio\Captio.csproj') `
     -c Release -r win-x64 --self-contained true `
     -p:PublishReadyToRun=true -p:Version=$Version `
+    -p:DebugType=none -p:DebugSymbols=false -p:ContinuousIntegrationBuild=true `
     -o $publish
 if ($LASTEXITCODE -ne 0) { throw 'dotnet publish failed.' }
+
+$symbols = Get-ChildItem $publish -Recurse -Filter *.pdb
+if ($symbols) { throw "Debug symbols must not ship: $($symbols.Name -join ', ')" }
 
 $iscc = (Get-Command iscc.exe -ErrorAction SilentlyContinue).Source
 if (-not $iscc) {

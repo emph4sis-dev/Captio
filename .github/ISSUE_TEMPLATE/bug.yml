@@ -1,0 +1,44 @@
+name: Informe de error
+description: Algo no funciona como debería.
+labels: [error]
+body:
+  - type: markdown
+    attributes:
+      value: |
+        Gracias por avisar. Si es un problema de seguridad, **no** lo publiques aquí: sigue SECURITY.md.
+        No adjuntes capturas con datos personales; usa contenido de demostración.
+  - type: textarea
+    id: what
+    attributes:
+      label: Qué pasa
+      description: Describe el error y lo que esperabas que ocurriera.
+    validations:
+      required: true
+  - type: textarea
+    id: steps
+    attributes:
+      label: Pasos para reproducirlo
+      placeholder: |
+        1. Pulsa ImpPant
+        2. ...
+    validations:
+      required: true
+  - type: input
+    id: version
+    attributes:
+      label: Versión de Captio
+      placeholder: "1.0.0"
+    validations:
+      required: true
+  - type: input
+    id: windows
+    attributes:
+      label: Versión de Windows
+      placeholder: "Windows 11 24H2"
+    validations:
+      required: true
+  - type: textarea
+    id: setup
+    attributes:
+      label: Monitores y escala
+      description: Cuántos monitores y con qué escala (por ejemplo, 2 monitores al 100 % y 150 %), si tiene relación.

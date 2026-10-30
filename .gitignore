@@ -12,3 +12,24 @@ private/
 
 # Build output of scripts/build-installer.ps1
 artifacts/
+
+# Local secrets and code-signing material: never commit them.
+.env
+.env.*
+!.env.example
+*.pfx
+*.p12
+*.pem
+*.key
+
+# Local editor and tool settings.
+.idea/
+.vscode/
+*.DotSettings.user
+
+# Output of local security scans.
+gitleaks-report*
+*.sarif
+
+# Local state of the design-review tool.
+.impeccable/
