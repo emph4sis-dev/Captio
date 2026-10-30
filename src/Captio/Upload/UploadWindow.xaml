@@ -1,0 +1,48 @@
+<Window x:Class="Captio.Upload.UploadWindow"
+        xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+        xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+        Title="Subir a Imgur"
+        Width="460"
+        SizeToContent="Height"
+        ResizeMode="NoResize"
+        WindowStartupLocation="CenterScreen"
+        Topmost="True">
+    <StackPanel Margin="24">
+        <Border x:Name="PreviewFrame" CornerRadius="8" ClipToBounds="True" Margin="0,0,0,16" HorizontalAlignment="Center">
+            <Image x:Name="PreviewImage" MaxHeight="180" MaxWidth="410" Stretch="Uniform" />
+        </Border>
+
+        <StackPanel x:Name="UploadingPanel">
+            <TextBlock Text="Subiendo a Imgur…" FontSize="16" FontWeight="SemiBold" />
+            <ProgressBar IsIndeterminate="True" Height="4" Margin="0,12,0,0" />
+            <StackPanel Orientation="Horizontal" HorizontalAlignment="Right" Margin="0,20,0,0">
+                <Button Content="Cancelar" MinWidth="96" Click="OnCancelUpload" />
+            </StackPanel>
+        </StackPanel>
+
+        <StackPanel x:Name="DonePanel" Visibility="Collapsed">
+            <TextBlock Text="Enlace listo" FontSize="16" FontWeight="SemiBold" />
+            <TextBox x:Name="LinkBox" IsReadOnly="True" Margin="0,10,0,0" FontFamily="Cascadia Mono, Consolas" />
+            <TextBlock TextWrapping="Wrap" Margin="0,10,0,0" Opacity="0.75"
+                       Text="Oculto no significa privado: cualquiera con el enlace puede ver la imagen. Al cerrar esta ventana, Captio olvida el enlace y no podrá eliminar la imagen." />
+            <StackPanel Orientation="Horizontal" HorizontalAlignment="Right" Margin="0,20,0,0">
+                <Button Content="Copiar enlace" MinWidth="120" Margin="0,0,8,0" Click="OnCopyLink" Style="{DynamicResource AccentButtonStyle}" />
+                <Button Content="Abrir" MinWidth="80" Margin="0,0,8,0" Click="OnOpenLink" />
+                <Button Content="Cerrar" MinWidth="80" Click="OnClose" />
+            </StackPanel>
+        </StackPanel>
+
+        <StackPanel x:Name="FailedPanel" Visibility="Collapsed">
+            <TextBlock Text="No se pudo subir" FontSize="16" FontWeight="SemiBold" />
+            <TextBlock x:Name="ErrorText" TextWrapping="Wrap" Margin="0,8,0,0" />
+            <TextBlock TextWrapping="Wrap" Margin="0,8,0,0" Opacity="0.75"
+                       Text="La captura solo está en memoria. Si cierras o descartas, se perderá." />
+            <StackPanel Orientation="Horizontal" HorizontalAlignment="Right" Margin="0,20,0,0">
+                <Button x:Name="RetryButton" Content="Reintentar" MinWidth="96" Margin="0,0,8,0" Click="OnRetry" Style="{DynamicResource AccentButtonStyle}" />
+                <Button Content="Copiar" MinWidth="80" Margin="0,0,8,0" Click="OnCopyImage" />
+                <Button Content="Guardar" MinWidth="80" Margin="0,0,8,0" Click="OnSaveImage" />
+                <Button Content="Descartar" MinWidth="80" Click="OnClose" />
+            </StackPanel>
+        </StackPanel>
+    </StackPanel>
+</Window>

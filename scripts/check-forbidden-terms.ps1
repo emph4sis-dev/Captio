@@ -1,0 +1,86 @@
+<#
+.SYNOPSIS
+  Fails if any tracked or untracked file in the repository contains a forbidden term.
+
+.DESCRIPTION
+  The term list lives OUTSIDE the repository so the terms themselves never get
+  committed. One term per line; blank lines and lines starting with # are ignored.
+  Matching is case-insensitive and also checks file paths.
+
+  Default list location: $env:USERPROFILE\.captio-private\forbidden-terms.txt
+  Override with -TermsFile or the CAPTIO_FORBIDDEN_TERMS_FILE environment variable.
+#>
+param(
+    [string]$TermsFile = $(if ($env:CAPTIO_FORBIDDEN_TERMS_FILE) { $env:CAPTIO_FORBIDDEN_TERMS_FILE } else { Join-Path $env:USERPROFILE '.captio-private\forbidden-terms.txt' })
+)
+
+$ErrorActionPreference = 'Stop'
+$repo = (Resolve-Path (Join-Path $PSScriptRoot '..')).Path
+
+if (-not (Test-Path $TermsFile)) {
+    Write-Error "Terms file not found: $TermsFile"
+    exit 2
+}
+
+$resolvedTerms = (Resolve-Path $TermsFile).Path
+if ($resolvedTerms.StartsWith($repo, [StringComparison]::OrdinalIgnoreCase)) {
+    Write-Error 'The terms file must not live inside the repository.'
+    exit 2
+}
+
+$terms = Get-Content $TermsFile -Encoding utf8 | ForEach-Object { $_.Trim() } | Where-Object { $_ -and -not $_.StartsWith('#') }
+if (-not $terms) {
+    Write-Error 'The terms file is empty.'
+    exit 2
+}
+
+Push-Location $repo
+try {
+    $files = git ls-files --cached --others --exclude-standard
+} finally {
+    Pop-Location
+}
+
+$hits = 0
+foreach ($relative in $files) {
+    foreach ($term in $terms) {
+        if ($relative.IndexOf($term, [StringComparison]::OrdinalIgnoreCase) -ge 0) {
+            Write-Host "path: $relative"
+            $hits++
+        }
+    }
+
+    $path = Join-Path $repo $relative
+    if (-not (Test-Path $path -PathType Leaf)) { continue }
+    $found = Select-String -Path $path -Pattern $terms -SimpleMatch -List:$false -ErrorAction SilentlyContinue
+    foreach ($m in $found) {
+        # Report location only, never the matched text.
+        Write-Host "content: ${relative}:$($m.LineNumber)"
+        $hits++
+    }
+}
+
+# Commit messages are part of the public record too.
+Push-Location $repo
+try {
+    $null = git rev-parse --verify --quiet HEAD
+    if ($LASTEXITCODE -eq 0) {
+        $log = git log --format='%H%n%B'
+        foreach ($term in $terms) {
+            if ($log -match [regex]::Escape($term)) {
+                Write-Host 'commit history: forbidden term found in a commit message'
+                $hits++
+                break
+            }
+        }
+    }
+} finally {
+    Pop-Location
+}
+
+if ($hits -gt 0) {
+    Write-Host "FAILED: $hits occurrence(s) found."
+    exit 1
+}
+
+Write-Host "OK: $($files.Count) files checked, no forbidden terms."
