@@ -1,5 +1,3 @@
-using System.Text.Json;
-using System.Text.Json.Serialization;
 using Captio.Core.Imaging;
 
 namespace Captio.Core.Library;
@@ -10,160 +8,168 @@ public enum LibraryItemKind
     Video,
 }
 
-public sealed record LibraryItem(
-    Guid Id, string FileName, string DisplayName, DateTimeOffset CreatedAt, int Width, int Height, LibraryItemKind Kind);
+/// <param name="Width">Known when Captio wrote the file; otherwise read lazily with <see cref="LibraryStore.TryReadSize"/>.</param>
+public sealed record LibraryItem(string FileName, DateTimeOffset CreatedAt, LibraryItemKind Kind, int? Width = null, int? Height = null)
+{
+    public string DisplayName => Path.GetFileNameWithoutExtension(FileName);
+}
 
 /// <summary>
-/// Permanent local library of saved captures and clips: a folder plus an index.json.
+/// The library is the capture folder itself: every PNG in it is an item, its file
+/// name is its name. There is no separate index or internal copy.
+/// Listing only reads directory entries, so folders with thousands of images stay fast;
+/// saving never rescans the folder.
 /// </summary>
 public sealed class LibraryStore
 {
-    private const string IndexFileName = "index.json";
+    // Clips will add ".mp4" once recording exists.
+    public static readonly IReadOnlySet<string> Extensions = new HashSet<string>(StringComparer.OrdinalIgnoreCase) { ".png" };
 
-    private static readonly JsonSerializerOptions JsonOptions = new()
-    {
-        WriteIndented = true,
-        Converters = { new JsonStringEnumConverter() },
-    };
+    private List<LibraryItem> _items = [];
 
-    private readonly List<LibraryItem> _items = [];
-
-    public LibraryStore(string root)
-    {
-        Root = root;
-        Directory.CreateDirectory(root);
-        Load();
-    }
+    /// <summary>Does not touch the disk; call <see cref="Refresh"/> or <see cref="RefreshAsync"/> to list.</summary>
+    public LibraryStore(string root) => Root = root;
 
     public string Root { get; }
 
-    /// <summary>Newest first.</summary>
+    /// <summary>Newest first, as of the last refresh plus items saved since.</summary>
     public IReadOnlyList<LibraryItem> Items => _items;
+
+    public bool Loaded { get; private set; }
 
     public event EventHandler? Changed;
 
     public string GetPath(LibraryItem item) => Path.Combine(Root, item.FileName);
 
+    /// <summary>Rescans the folder, picking up files added or removed outside Captio.</summary>
+    public void Refresh() => Apply(Scan(Root));
+
+    /// <summary>Scans on a worker thread and applies the result on the caller's context.</summary>
+    public async Task RefreshAsync()
+    {
+        var root = Root;
+        Apply(await Task.Run(() => Scan(root)));
+    }
+
+    private void Apply(List<LibraryItem> items)
+    {
+        _items = items;
+        Loaded = true;
+        Changed?.Invoke(this, EventArgs.Empty);
+    }
+
+    private static List<LibraryItem> Scan(string root)
+    {
+        if (!Directory.Exists(root)) return [];
+        try
+        {
+            return new DirectoryInfo(root).EnumerateFiles()
+                .Where(f => Extensions.Contains(f.Extension))
+                .Select(f => new LibraryItem(f.Name, new DateTimeOffset(f.CreationTimeUtc, TimeSpan.Zero), LibraryItemKind.Image))
+                .OrderByDescending(i => i.CreatedAt)
+                .ToList();
+        }
+        catch (Exception e) when (e is IOException or UnauthorizedAccessException)
+        {
+            return [];
+        }
+    }
+
+    /// <summary>Pixel size from the PNG header, or null if the file is unreadable or not a PNG.</summary>
+    public static (int Width, int Height)? TryReadSize(string path)
+    {
+        try
+        {
+            Span<byte> header = stackalloc byte[24];
+            using var file = File.OpenRead(path);
+            file.ReadExactly(header);
+            return PngSanitizer.ReadSize(header);
+        }
+        catch (Exception e) when (e is IOException or UnauthorizedAccessException or InvalidDataException)
+        {
+            return null;
+        }
+    }
+
+    /// <summary>Writes the PNG; never scans the folder.</summary>
     public LibraryItem AddImage(ReadOnlySpan<byte> png, DateTimeOffset createdAt)
     {
         var (width, height) = PngSanitizer.ReadSize(png);
-        var baseName = "Captura " + createdAt.ToLocalTime().ToString("yyyy-MM-dd HH-mm-ss");
-        var fileName = UniqueFileName(baseName, ".png");
+        var fileName = UniqueFileName(Root, "Captura " + createdAt.ToLocalTime().ToString("yyyy-MM-dd HH-mm-ss"), ".png");
+        var path = Path.Combine(Root, fileName);
 
-        using (var file = new FileStream(Path.Combine(Root, fileName), FileMode.CreateNew, FileAccess.Write))
+        try
         {
+            using var file = new FileStream(path, FileMode.CreateNew, FileAccess.Write);
             file.Write(png);
         }
+        catch
+        {
+            TryDelete(path);
+            throw;
+        }
 
-        var item = new LibraryItem(Guid.NewGuid(), fileName, baseName, createdAt, width, height, LibraryItemKind.Image);
-        _items.Insert(0, item);
-        SaveIndex();
+        var item = new LibraryItem(fileName, createdAt, LibraryItemKind.Image, width, height);
+        if (Loaded) _items.Insert(0, item);
+        Changed?.Invoke(this, EventArgs.Empty);
         return item;
     }
 
-    public LibraryItem Rename(Guid id, string displayName)
+    /// <summary>Renames the file on disk, keeping its extension.</summary>
+    public LibraryItem Rename(LibraryItem item, string newName)
     {
-        displayName = displayName.Trim();
-        if (displayName.Length == 0) throw new ArgumentException("Name cannot be empty.", nameof(displayName));
+        newName = ValidateName(newName);
+        var fileName = newName + Path.GetExtension(item.FileName);
+        if (string.Equals(fileName, item.FileName, StringComparison.Ordinal)) return item;
 
-        var index = IndexOf(id);
-        var renamed = _items[index] with { DisplayName = displayName };
-        _items[index] = renamed;
-        SaveIndex();
+        var target = Path.Combine(Root, fileName);
+        var caseOnly = string.Equals(fileName, item.FileName, StringComparison.OrdinalIgnoreCase);
+        if (!caseOnly && File.Exists(target)) throw new IOException($"Ya existe un archivo llamado «{fileName}».");
+
+        File.Move(GetPath(item), target);
+        var renamed = item with { FileName = fileName };
+        var index = _items.FindIndex(i => i.FileName == item.FileName);
+        if (index >= 0) _items[index] = renamed;
+        Changed?.Invoke(this, EventArgs.Empty);
         return renamed;
     }
 
-    /// <summary>Permanently deletes the file (no recycle bin) and its entry.</summary>
-    public void Delete(Guid id)
+    /// <summary>Permanently deletes the file (no recycle bin).</summary>
+    public void Delete(LibraryItem item)
     {
-        var index = IndexOf(id);
-        var path = GetPath(_items[index]);
+        var path = GetPath(item);
         if (File.Exists(path)) File.Delete(path);
-        _items.RemoveAt(index);
-        SaveIndex();
+        _items.RemoveAll(i => i.FileName == item.FileName);
+        Changed?.Invoke(this, EventArgs.Empty);
     }
 
-    private int IndexOf(Guid id)
+    public static string ValidateName(string name)
     {
-        var index = _items.FindIndex(i => i.Id == id);
-        return index >= 0 ? index : throw new KeyNotFoundException($"No library item {id}.");
+        name = name.Trim().TrimEnd('.');
+        if (name.Length == 0) throw new ArgumentException("El nombre no puede estar vacío.", nameof(name));
+        if (name.IndexOfAny(Path.GetInvalidFileNameChars()) >= 0)
+            throw new ArgumentException("El nombre contiene caracteres no permitidos: \\ / : * ? \" < > |", nameof(name));
+        return name;
     }
 
-    private void Load()
-    {
-        var indexPath = Path.Combine(Root, IndexFileName);
-        List<LibraryItem>? loaded = null;
-        if (File.Exists(indexPath))
-        {
-            try
-            {
-                loaded = JsonSerializer.Deserialize<List<LibraryItem>>(File.ReadAllText(indexPath), JsonOptions);
-            }
-            catch (JsonException)
-            {
-                loaded = null;
-            }
-        }
-
-        var repaired = loaded is null;
-        loaded ??= Rebuild();
-
-        var present = loaded.Where(i => i.FileName == Path.GetFileName(i.FileName) && File.Exists(GetPath(i))).ToList();
-        repaired |= present.Count != loaded.Count;
-
-        _items.Clear();
-        _items.AddRange(present.OrderByDescending(i => i.CreatedAt));
-        if (repaired) SaveIndex(raiseChanged: false);
-    }
-
-    private List<LibraryItem> Rebuild()
-    {
-        var items = new List<LibraryItem>();
-        var header = new byte[24];
-        foreach (var path in Directory.EnumerateFiles(Root))
-        {
-            var extension = Path.GetExtension(path).ToLowerInvariant();
-            if (extension is not (".png" or ".mp4")) continue;
-
-            int width = 0, height = 0;
-            if (extension == ".png")
-            {
-                try
-                {
-                    using var file = File.OpenRead(path);
-                    file.ReadExactly(header);
-                    (width, height) = PngSanitizer.ReadSize(header);
-                }
-                catch (Exception e) when (e is IOException or InvalidDataException)
-                {
-                    continue;
-                }
-            }
-
-            items.Add(new LibraryItem(
-                Guid.NewGuid(), Path.GetFileName(path), Path.GetFileNameWithoutExtension(path),
-                new DateTimeOffset(File.GetCreationTimeUtc(path), TimeSpan.Zero), width, height,
-                extension == ".png" ? LibraryItemKind.Image : LibraryItemKind.Video));
-        }
-        return items;
-    }
-
-    private string UniqueFileName(string baseName, string extension)
+    internal static string UniqueFileName(string folder, string baseName, string extension, ISet<string>? reserved = null)
     {
         var name = baseName + extension;
-        for (var n = 2; File.Exists(Path.Combine(Root, name)); n++)
+        for (var n = 2; File.Exists(Path.Combine(folder, name)) || reserved?.Contains(name) == true; n++)
         {
             name = $"{baseName} ({n}){extension}";
         }
         return name;
     }
 
-    private void SaveIndex(bool raiseChanged = true)
+    private static void TryDelete(string path)
     {
-        var indexPath = Path.Combine(Root, IndexFileName);
-        var tempPath = indexPath + ".tmp";
-        File.WriteAllText(tempPath, JsonSerializer.Serialize(_items, JsonOptions));
-        File.Move(tempPath, indexPath, overwrite: true);
-        if (raiseChanged) Changed?.Invoke(this, EventArgs.Empty);
+        try
+        {
+            if (File.Exists(path)) File.Delete(path);
+        }
+        catch (Exception e) when (e is IOException or UnauthorizedAccessException)
+        {
+        }
     }
 }

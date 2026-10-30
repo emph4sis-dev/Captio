@@ -104,14 +104,15 @@ public partial class UploadWindow : Window
         if (_image is null) return;
         try
         {
-            _services.Library.AddImage(_image.Png, DateTimeOffset.Now);
+            _services.SaveCapture(_image.Png);
         }
         catch (Exception ex) when (ex is IOException or UnauthorizedAccessException)
         {
+            // Includes an unusable capture folder; the image stays in memory for another try.
             MessageBox.Show(this, "No se pudo guardar la captura: " + ex.Message, "Captio", MessageBoxButton.OK, MessageBoxImage.Error);
             return;
         }
-        _services.Notify("Captura guardada en la biblioteca.");
+        _services.Notify("Captura guardada.");
         Close();
     }
 

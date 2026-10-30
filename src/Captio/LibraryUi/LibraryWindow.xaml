@@ -11,16 +11,20 @@
     <Grid Margin="20">
         <Grid.RowDefinitions>
             <RowDefinition Height="Auto" />
+            <RowDefinition Height="Auto" />
             <RowDefinition Height="*" />
+            <RowDefinition Height="Auto" />
         </Grid.RowDefinitions>
 
-        <DockPanel Margin="0,0,0,14" LastChildFill="False">
-            <ComboBox x:Name="KindFilter" DockPanel.Dock="Left" Width="140" Margin="0,0,8,0" SelectionChanged="OnFilterChanged">
-                <ComboBoxItem Content="Todo" IsSelected="True" />
-                <ComboBoxItem Content="Imágenes" />
-                <ComboBoxItem Content="Videos" />
-            </ComboBox>
-            <ComboBox x:Name="PeriodFilter" DockPanel.Dock="Left" Width="160" SelectionChanged="OnFilterChanged">
+        <DockPanel Margin="0,0,0,12">
+            <Button x:Name="OpenFolderButton" DockPanel.Dock="Right" Content="Abrir carpeta" Margin="8,0,0,0" Click="OnOpenFolder" />
+            <Button DockPanel.Dock="Right" Content="Cambiar…" Click="OnChangeFolder" ToolTip="Elegir la carpeta de capturas en Configuración" />
+            <TextBlock x:Name="FolderPath" VerticalAlignment="Center" TextTrimming="CharacterEllipsis" Opacity="0.75" />
+        </DockPanel>
+
+        <DockPanel Grid.Row="1" Margin="0,0,0,14" LastChildFill="False">
+            <ComboBox x:Name="PeriodFilter" DockPanel.Dock="Left" Width="160" SelectionChanged="OnFilterChanged"
+                      AutomationProperties.Name="Filtrar por fecha">
                 <ComboBoxItem Content="Cualquier fecha" IsSelected="True" />
                 <ComboBoxItem Content="Hoy" />
                 <ComboBoxItem Content="Últimos 7 días" />
@@ -33,7 +37,7 @@
             <Button DockPanel.Dock="Right" Content="Copiar" Click="OnCopy" IsEnabled="{Binding SelectedItem, ElementName=Items, Converter={x:Static local:NotNullConverter.Instance}}" />
         </DockPanel>
 
-        <ListBox x:Name="Items" Grid.Row="1"
+        <ListBox x:Name="Items" Grid.Row="2"
                  ScrollViewer.HorizontalScrollBarVisibility="Disabled"
                  BorderThickness="0" Background="Transparent"
                  MouseDoubleClick="OnOpen"
@@ -50,7 +54,7 @@
                     <StackPanel Width="196" Margin="4">
                         <Border Height="124" CornerRadius="6" ClipToBounds="True" Background="#14000000">
                             <Grid>
-                                <Image Source="{Binding Thumbnail}" Stretch="UniformToFill" />
+                                <Image Source="{Binding Thumbnail}" Stretch="UniformToFill" AutomationProperties.Name="{Binding Name}" />
                                 <TextBlock Text="&#xE714;" FontFamily="Segoe Fluent Icons, Segoe MDL2 Assets" FontSize="28"
                                            HorizontalAlignment="Center" VerticalAlignment="Center" Opacity="0.6"
                                            Visibility="{Binding VideoGlyphVisibility}" />
@@ -63,8 +67,13 @@
             </ListBox.ItemTemplate>
         </ListBox>
 
-        <TextBlock x:Name="EmptyState" Grid.Row="1" HorizontalAlignment="Center" VerticalAlignment="Center"
+        <TextBlock x:Name="EmptyState" Grid.Row="2" HorizontalAlignment="Center" VerticalAlignment="Center"
                    TextAlignment="Center" Opacity="0.7" TextWrapping="Wrap" MaxWidth="360"
-                   Text="Aún no hay capturas guardadas. En el editor, pulsa Ctrl+S para guardar una aquí." />
+                   Text="Cargando…" />
+
+        <DockPanel Grid.Row="3" Margin="0,12,0,0">
+            <Button x:Name="ShowMoreButton" DockPanel.Dock="Right" Content="Mostrar más" Click="OnShowMore" Visibility="Collapsed" />
+            <TextBlock x:Name="CountText" VerticalAlignment="Center" Opacity="0.7" FontSize="12" />
+        </DockPanel>
     </Grid>
 </Window>

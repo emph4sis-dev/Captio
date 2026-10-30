@@ -38,7 +38,9 @@ internal static class ScreenCapture
         var previous = Native.SelectObject(memoryDc, bitmap);
         try
         {
-            Native.BitBlt(memoryDc, 0, 0, bounds.Width, bounds.Height, screenDc, bounds.X, bounds.Y, Native.SRCCOPY | Native.CAPTUREBLT);
+            // No CAPTUREBLT: the compositor already includes layered windows, and that flag
+            // slows the copy (most over DirectX games) and makes the cursor flicker.
+            Native.BitBlt(memoryDc, 0, 0, bounds.Width, bounds.Height, screenDc, bounds.X, bounds.Y, Native.SRCCOPY);
             var source = Imaging.CreateBitmapSourceFromHBitmap(bitmap, 0, Int32Rect.Empty, BitmapSizeOptions.FromEmptyOptions());
             source.Freeze();
             return source;

@@ -11,7 +11,11 @@ public abstract record Annotation
     public abstract bool HitTest(double x, double y, double tolerance);
 }
 
-public sealed record ArrowAnnotation(double X1, double Y1, double X2, double Y2, uint Argb, double Thickness) : Annotation
+/// <summary>An annotation drawn with the user's color and a stroke.</summary>
+public abstract record StrokedAnnotation(uint Argb, double Thickness) : Annotation;
+
+public sealed record ArrowAnnotation(double X1, double Y1, double X2, double Y2, uint Argb, double Thickness)
+    : StrokedAnnotation(Argb, Thickness)
 {
     public double Length => Math.Sqrt((X2 - X1) * (X2 - X1) + (Y2 - Y1) * (Y2 - Y1));
 
@@ -31,6 +35,44 @@ public sealed record ArrowAnnotation(double X1, double Y1, double X2, double Y2,
     }
 }
 
+/// <summary>Outline-only rectangle; its empty interior is not part of the shape.</summary>
+public sealed record RectangleAnnotation(double X, double Y, double Width, double Height, uint Argb, double Thickness)
+    : StrokedAnnotation(Argb, Thickness)
+{
+    public override Annotation Offset(double dx, double dy) => this with { X = X + dx, Y = Y + dy };
+
+    public override bool HitTest(double x, double y, double tolerance)
+    {
+        var reach = tolerance + Thickness / 2;
+        var withinOuter = x >= X - reach && x <= X + Width + reach && y >= Y - reach && y <= Y + Height + reach;
+        var withinInner = x > X + reach && x < X + Width - reach && y > Y + reach && y < Y + Height - reach;
+        return withinOuter && !withinInner;
+    }
+}
+
+/// <summary>Outline-only ellipse inscribed in the given bounds.</summary>
+public sealed record EllipseAnnotation(double X, double Y, double Width, double Height, uint Argb, double Thickness)
+    : StrokedAnnotation(Argb, Thickness)
+{
+    public override Annotation Offset(double dx, double dy) => this with { X = X + dx, Y = Y + dy };
+
+    public override bool HitTest(double x, double y, double tolerance)
+    {
+        var reach = tolerance + Thickness / 2;
+        var a = Width / 2;
+        var b = Height / 2;
+        if (a < 0.5 || b < 0.5)
+            return new RectangleAnnotation(X, Y, Width, Height, Argb, Thickness).HitTest(x, y, tolerance);
+
+        var dx = x - (X + a);
+        var dy = y - (Y + b);
+        var k = Math.Sqrt(dx / a * (dx / a) + dy / b * (dy / b));
+        // Distance along the ray from the center to the boundary (exact for circles).
+        var distance = k == 0 ? Math.Min(a, b) : Math.Sqrt(dx * dx + dy * dy) * Math.Abs(1 - 1 / k);
+        return distance <= reach;
+    }
+}
+
 public sealed record RedactionAnnotation(double X, double Y, double Width, double Height) : Annotation
 {
     public static RedactionAnnotation FromCorners(double x1, double y1, double x2, double y2) =>
@@ -38,6 +80,7 @@ public sealed record RedactionAnnotation(double X, double Y, double Width, doubl
 
     public override Annotation Offset(double dx, double dy) => this with { X = X + dx, Y = Y + dy };
 
+    // Redactions are solid, so their whole area selects them.
     public override bool HitTest(double x, double y, double tolerance) =>
         x >= X - tolerance && x <= X + Width + tolerance &&
         y >= Y - tolerance && y <= Y + Height + tolerance;

@@ -8,11 +8,10 @@ internal sealed class TrayIcon : IDisposable
 {
     private readonly NotifyIcon _icon;
 
-    public TrayIcon(Action capture, Action clip, Action library, Action settings, Action exit)
+    public TrayIcon(Action capture, Action library, Action settings, Action exit)
     {
         var menu = new ContextMenuStrip();
         menu.Items.Add("Capturar imagen", null, (_, _) => capture());
-        menu.Items.Add("Grabar clip", null, (_, _) => clip());
         menu.Items.Add(new ToolStripSeparator());
         menu.Items.Add("Biblioteca", null, (_, _) => library());
         menu.Items.Add("Configuración", null, (_, _) => settings());

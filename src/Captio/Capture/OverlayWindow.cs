@@ -1,4 +1,5 @@
 using System.Windows;
+using System.Windows.Automation;
 using System.Windows.Controls;
 using System.Windows.Controls.Primitives;
 using System.Windows.Input;
@@ -6,6 +7,7 @@ using System.Windows.Interop;
 using System.Windows.Media;
 using System.Windows.Shapes;
 using Captio.Core.Annotations;
+using Captio.Core.Layout;
 using Captio.Core.Settings;
 using Captio.Interop;
 
@@ -14,7 +16,7 @@ namespace Captio.Capture;
 internal enum Tool
 {
     Select,
-    Arrow,
+    Shape,
     Redact,
 }
 
@@ -24,33 +26,49 @@ internal enum Tool
 /// </summary>
 internal sealed class OverlayWindow : Window
 {
-    private static readonly uint[] Palette = [0xFFE5484D, 0xFFF5A524, 0xFF30A46C, 0xFF3E8BFF, 0xFFF4F4F5];
-    private static readonly double[] Thicknesses = [4, 6, 10];
     private const int MinRegionSize = 2;
+
+    private static readonly (ShapeKind Kind, string Name)[] ShapeNames =
+    [
+        (ShapeKind.Arrow, "Flecha"),
+        (ShapeKind.Rectangle, "Rectángulo"),
+        (ShapeKind.Ellipse, "Elipse"),
+    ];
 
     [Flags]
     private enum Edge { None = 0, Left = 1, Top = 2, Right = 4, Bottom = 8 }
 
-    private enum Drag { None, NewRegion, MoveRegion, ResizeRegion, DrawArrow, DrawRedaction, MoveAnnotation }
+    private enum Drag { None, NewRegion, MoveRegion, ResizeRegion, DrawShape, DrawRedaction, MoveAnnotation }
 
     private readonly CaptureSession _session;
     private readonly Surface _surface;
     private readonly Canvas _chrome = new();
+    private readonly ToolbarSide _side;
+    private readonly bool _vertical;
+    private readonly double _strokeDip;
     private readonly Border _toolbar;
     private readonly Dictionary<Tool, ToggleButton> _toolButtons = [];
-    private readonly List<(uint Argb, ToggleButton Button)> _colorButtons = [];
-    private readonly List<(double Value, ToggleButton Button)> _thicknessButtons = [];
+    private ToggleButton _shapeButton = null!;
     private Button _undoButton = null!, _redoButton = null!, _deleteButton = null!;
+    private Ellipse _colorSwatch = null!;
+    private Popup _shapePopup = null!, _colorPopup = null!;
+    private readonly List<(ShapeKind Kind, Button Item)> _shapeItems = [];
+    private readonly List<(uint Argb, Button Item)> _colorItems = [];
+    private Popup? _openPopup;
+    private int _popupIndex;
+    private long _popupClosedAt;
 
     private Int32Rect? _region;
-    private Tool _tool = Tool.Arrow;
+    // Selecting first lets the user adjust the region before choosing a tool.
+    private Tool _tool = Tool.Select;
+    private ShapeKind _shape;
     private uint _color;
-    private double _thickness;
     private int _selected = -1;
 
     private Drag _drag;
     private Edge _resizeEdges;
     private Point _dragStart;
+    private Point _lastPoint;
     private Int32Rect _regionAtDragStart;
     private Annotation? _preview;
 
@@ -58,9 +76,12 @@ internal sealed class OverlayWindow : Window
     {
         _session = session;
         Snapshot = snapshot;
+        _shape = settings.LastShape;
         _color = settings.ArrowArgb;
-        _thickness = settings.ArrowThickness;
-        Document.Changed += (_, _) => { _selected = -1; Refresh(); };
+        _side = settings.ToolbarSide;
+        _vertical = ToolbarPlacement.IsVertical(_side);
+        _strokeDip = settings.StrokeThickness;
+        Document.Changed += (_, _) => { _selected = -1; UpdateToolbarState(); Refresh(); };
 
         Title = "Captio";
         WindowStyle = WindowStyle.None;
@@ -88,7 +109,9 @@ internal sealed class OverlayWindow : Window
         _surface.MouseLeftButtonDown += OnMouseDown;
         _surface.MouseMove += OnMouseMove;
         _surface.MouseLeftButtonUp += OnMouseUp;
+        PreviewKeyDown += OnPreviewKeyDown;
         KeyDown += OnKeyDown;
+        KeyUp += OnKeyUp;
         UpdateToolbarState();
     }
 
@@ -97,10 +120,6 @@ internal sealed class OverlayWindow : Window
     public AnnotationDocument Document { get; } = new();
 
     public Int32Rect? Region => _region;
-
-    public uint ArrowColor => _color;
-
-    public double ArrowThickness => _thickness;
 
     private double Scale => VisualTreeHelper.GetDpi(this).DpiScaleX;
 
@@ -112,6 +131,7 @@ internal sealed class OverlayWindow : Window
         _preview = null;
         _selected = -1;
         _toolbar.Visibility = Visibility.Collapsed;
+        ClosePopup();
         Refresh();
     }
 
@@ -141,6 +161,7 @@ internal sealed class OverlayWindow : Window
     {
         var p = ToPixels(e);
         _dragStart = p;
+        _lastPoint = p;
         _surface.CaptureMouse();
 
         if (_region is not { } region)
@@ -186,7 +207,7 @@ internal sealed class OverlayWindow : Window
         }
         else if (inside)
         {
-            _drag = _tool == Tool.Arrow ? Drag.DrawArrow : Drag.DrawRedaction;
+            _drag = _tool == Tool.Shape ? Drag.DrawShape : Drag.DrawRedaction;
         }
         else
         {
@@ -212,12 +233,17 @@ internal sealed class OverlayWindow : Window
     private void OnMouseMove(object sender, MouseEventArgs e)
     {
         var p = ToPixels(e);
+        _lastPoint = p;
         if (_drag == Drag.None)
         {
             _surface.Cursor = CursorAt(p);
             return;
         }
+        UpdateDrag(p);
+    }
 
+    private void UpdateDrag(Point p)
+    {
         var dx = p.X - _dragStart.X;
         var dy = p.Y - _dragStart.Y;
         switch (_drag)
@@ -235,8 +261,9 @@ internal sealed class OverlayWindow : Window
             case Drag.ResizeRegion:
                 _region = Resize(_regionAtDragStart, _resizeEdges, dx, dy);
                 break;
-            case Drag.DrawArrow:
-                _preview = new ArrowAnnotation(_dragStart.X, _dragStart.Y, p.X, p.Y, _color, _thickness);
+            case Drag.DrawShape:
+                var constrain = Keyboard.Modifiers.HasFlag(ModifierKeys.Shift);
+                _preview = ShapeFactory.Create(_shape, _dragStart.X, _dragStart.Y, p.X, p.Y, constrain, _color, _strokeDip * Scale);
                 break;
             case Drag.DrawRedaction:
                 _preview = RedactionAnnotation.FromCorners(_dragStart.X, _dragStart.Y, p.X, p.Y);
@@ -262,11 +289,8 @@ internal sealed class OverlayWindow : Window
             case Drag.NewRegion when _region is { } r && (r.Width < MinRegionSize || r.Height < MinRegionSize):
                 _region = null;
                 break;
-            case Drag.DrawArrow when preview is ArrowAnnotation a && a.Length >= 4 * Scale:
-                Document.Add(a);
-                break;
-            case Drag.DrawRedaction when preview is RedactionAnnotation r && r.Width >= 2 && r.Height >= 2:
-                Document.Add(r);
+            case Drag.DrawShape or Drag.DrawRedaction when preview is not null && ShapeFactory.IsMeaningful(preview, 4 * Scale):
+                Document.Add(preview);
                 break;
             case Drag.MoveAnnotation when preview is not null && preview != Document.Items[selected]:
                 Document.Replace(selected, preview);
@@ -283,13 +307,36 @@ internal sealed class OverlayWindow : Window
         Refresh();
     }
 
+    private void OnPreviewKeyDown(object sender, KeyEventArgs e)
+    {
+        if (_openPopup is null) return;
+
+        var items = _openPopup == _colorPopup ? _colorItems.Select(c => c.Item).ToList() : _shapeItems.Select(s => s.Item).ToList();
+        var columns = _openPopup == _colorPopup ? 4 : 1;
+        var handled = true;
+        switch (e.Key)
+        {
+            case Key.Escape: ClosePopup(); break;
+            case Key.Left: MovePopupFocus(items, -1); break;
+            case Key.Right: MovePopupFocus(items, 1); break;
+            case Key.Up: MovePopupFocus(items, -columns); break;
+            case Key.Down: MovePopupFocus(items, columns); break;
+            case Key.Tab: MovePopupFocus(items, Keyboard.Modifiers.HasFlag(ModifierKeys.Shift) ? -1 : 1); break;
+            case Key.Enter or Key.Space: items[_popupIndex].RaiseEvent(new RoutedEventArgs(ButtonBase.ClickEvent)); break;
+            default: handled = false; break;
+        }
+        e.Handled = handled;
+    }
+
     private void OnKeyDown(object sender, KeyEventArgs e)
     {
         var ctrl = Keyboard.Modifiers.HasFlag(ModifierKeys.Control);
+        var shift = Keyboard.Modifiers.HasFlag(ModifierKeys.Shift);
         var handled = true;
         switch (e.Key)
         {
             case Key.Escape: _session.Cancel(); break;
+            case Key.X when ctrl: _session.Cancel(); break;
             case Key.Z when ctrl: Document.Undo(); break;
             case Key.Y when ctrl: Document.Redo(); break;
             case Key.C when ctrl: Deliver(Destination.Copy); break;
@@ -298,11 +345,20 @@ internal sealed class OverlayWindow : Window
             case Key.Enter: Deliver(_session.DefaultDestination); break;
             case Key.Delete or Key.Back: DeleteSelected(); break;
             case Key.V when !ctrl: SetTool(Tool.Select); break;
-            case Key.A when !ctrl: SetTool(Tool.Arrow); break;
+            case Key.F when !ctrl && shift: OpenPopup(_shapePopup); break;
+            case Key.F when !ctrl: SetTool(Tool.Shape); break;
             case Key.R when !ctrl: SetTool(Tool.Redact); break;
+            case Key.C when !ctrl: OpenPopup(_colorPopup); break;
+            case Key.LeftShift or Key.RightShift when _drag == Drag.DrawShape: UpdateDrag(_lastPoint); break;
             default: handled = false; break;
         }
         e.Handled = handled;
+    }
+
+    private void OnKeyUp(object sender, KeyEventArgs e)
+    {
+        // Releasing Shift mid-drag turns the square or circle back into a free shape.
+        if (e.Key is Key.LeftShift or Key.RightShift && _drag == Drag.DrawShape) UpdateDrag(_lastPoint);
     }
 
     private void Deliver(Destination destination)
@@ -322,6 +378,20 @@ internal sealed class OverlayWindow : Window
         if (tool != Tool.Select) _selected = -1;
         UpdateToolbarState();
         Refresh();
+    }
+
+    private void SetShape(ShapeKind shape)
+    {
+        _shape = shape;
+        _session.RememberShape(shape);
+        SetTool(Tool.Shape);
+    }
+
+    private void SetColor(uint argb)
+    {
+        _color = argb;
+        _session.RememberColor(argb);
+        UpdateToolbarState();
     }
 
     // ---- Geometry helpers ---------------------------------------------------------------------
@@ -382,65 +452,211 @@ internal sealed class OverlayWindow : Window
 
     private Border BuildToolbar()
     {
-        var panel = new StackPanel { Orientation = Orientation.Horizontal };
+        var panel = new StackPanel { Orientation = _vertical ? Orientation.Vertical : Orientation.Horizontal };
 
-        _toolButtons[Tool.Select] = AddToggle(panel, Glyph(""), "Seleccionar y mover (V)", () => SetTool(Tool.Select));
-        var arrowGlyph = Glyph("");
-        arrowGlyph.RenderTransform = new RotateTransform(-45, 8, 8);
-        _toolButtons[Tool.Arrow] = AddToggle(panel, arrowGlyph, "Flecha (A)", () => SetTool(Tool.Arrow));
+        _toolButtons[Tool.Select] = AddToggle(panel, Glyph(""), "Seleccionar y mover", "V", () => SetTool(Tool.Select));
+        BuildShapeButton(panel);
         _toolButtons[Tool.Redact] = AddToggle(panel,
-            new Rectangle { Width = 16, Height = 10, Fill = Brushes.Black, Stroke = (Brush)FindResource("Captio.Text"), StrokeThickness = 1.2 },
-            "Censurar (R)", () => SetTool(Tool.Redact));
+            new Rectangle { Width = 16, Height = 10, Fill = Brushes.Black, Stroke = Res("Captio.Text"), StrokeThickness = 1.2 },
+            "Censurar", "R", () => SetTool(Tool.Redact));
+        panel.Children.Add(BuildColorButton());
         panel.Children.Add(Separator());
 
-        foreach (var argb in Palette)
-        {
-            var swatch = new Ellipse { Width = 14, Height = 14, Fill = new SolidColorBrush(AnnotationRenderer.ToColor(argb)) };
-            _colorButtons.Add((argb, AddToggle(panel, swatch, "Color de flecha", () => { _color = argb; SetTool(Tool.Arrow); })));
-        }
+        _undoButton = AddButton(panel, Glyph(""), "Deshacer", "Ctrl+Z", Document.Undo);
+        _redoButton = AddButton(panel, Glyph(""), "Rehacer", "Ctrl+Y", Document.Redo);
+        _deleteButton = AddButton(panel, Glyph(""), "Eliminar anotación", "Supr", DeleteSelected);
         panel.Children.Add(Separator());
 
-        foreach (var value in Thicknesses)
-        {
-            var line = new Rectangle { Width = 16, Height = value / 2 + 1, RadiusX = 1, RadiusY = 1, Fill = (Brush)FindResource("Captio.Text") };
-            _thicknessButtons.Add((value, AddToggle(panel, line, "Grosor de flecha", () => { _thickness = value; SetTool(Tool.Arrow); })));
-        }
-        panel.Children.Add(Separator());
-
-        _undoButton = AddButton(panel, Glyph(""), "Deshacer (Ctrl+Z)", Document.Undo);
-        _redoButton = AddButton(panel, Glyph(""), "Rehacer (Ctrl+Y)", Document.Redo);
-        _deleteButton = AddButton(panel, Glyph(""), "Eliminar anotación (Supr)", DeleteSelected);
-        panel.Children.Add(Separator());
-
-        AddButton(panel, Glyph(""), "Copiar (Ctrl+C)", () => Deliver(Destination.Copy));
-        AddButton(panel, Glyph(""), "Guardar en la biblioteca (Ctrl+S)", () => Deliver(Destination.Save));
-        var upload = AddButton(panel, LabeledGlyph("", "Imgur"),
-            _session.ImgurAvailable ? "Subir a Imgur (Ctrl+U)" : "Subida a Imgur no disponible: esta compilación no tiene Client-ID",
-            () => Deliver(Destination.Imgur));
+        AddButton(panel, Glyph(""), "Copiar", "Ctrl+C", () => Deliver(Destination.Copy));
+        AddButton(panel, Glyph(""), "Guardar en la carpeta de capturas", "Ctrl+S", () => Deliver(Destination.Save));
+        // The label keeps the one network action unambiguous where there is room for it.
+        var upload = AddButton(panel, _vertical ? Glyph("") : LabeledGlyph("", "Imgur"),
+            _session.ImgurAvailable ? "Subir a Imgur" : "Subida a Imgur no disponible: esta compilación no tiene Client-ID",
+            _session.ImgurAvailable ? "Ctrl+U" : null, () => Deliver(Destination.Imgur));
         upload.IsEnabled = _session.ImgurAvailable;
         ToolTipService.SetShowOnDisabled(upload, true);
-        AddButton(panel, Glyph(""), "Cancelar (Esc)", _session.Cancel);
+        AddButton(panel, Glyph(""), "Cancelar", "Ctrl+X", _session.Cancel);
 
         return new Border
         {
             Child = panel,
-            Padding = new Thickness(6),
-            CornerRadius = new CornerRadius(12),
-            Background = (Brush)FindResource("Captio.Bar"),
-            BorderBrush = (Brush)FindResource("Captio.BarBorder"),
+            Padding = new Thickness(4),
+            CornerRadius = new CornerRadius(10),
+            Background = Res("Captio.Bar"),
+            BorderBrush = Res("Captio.BarBorder"),
             BorderThickness = new Thickness(1),
             Effect = new System.Windows.Media.Effects.DropShadowEffect { BlurRadius = 18, ShadowDepth = 4, Opacity = 0.45 },
         };
     }
 
-    private static TextBlock Glyph(string glyph) => new()
+    /// <summary>Shows the current shape; clicking it opens the shape menu, like the color button.</summary>
+    private void BuildShapeButton(Panel panel)
+    {
+        _shapeButton = AddToggle(panel, ShapeIcon(_shape), ShapeName(_shape), "F", () => OpenPopup(_shapePopup));
+        _toolButtons[Tool.Shape] = _shapeButton;
+
+        var menu = new StackPanel { Margin = new Thickness(2) };
+        foreach (var (kind, name) in ShapeNames)
+        {
+            var row = new StackPanel { Orientation = Orientation.Horizontal };
+            row.Children.Add(ShapeIcon(kind));
+            row.Children.Add(new TextBlock { Text = name, Margin = new Thickness(10, 0, 18, 0), VerticalAlignment = VerticalAlignment.Center });
+            var item = PopupItem(row, name, () => { SetShape(kind); ClosePopup(); });
+            item.HorizontalContentAlignment = HorizontalAlignment.Left;
+            item.Padding = new Thickness(8, 6, 8, 6);
+            menu.Children.Add(item);
+            _shapeItems.Add((kind, item));
+        }
+        _shapePopup = CreatePopup(menu, _shapeButton, "Formas");
+    }
+
+    private FrameworkElement BuildColorButton()
+    {
+        // Full-size palette glyph like every other icon, with a badge in the selected color.
+        // The badge's ring uses the bar color so it reads as a cutout, not an outline.
+        _colorSwatch = new Ellipse
+        {
+            Width = 8,
+            Height = 8,
+            Stroke = Res("Captio.Bar"),
+            StrokeThickness = 1.5,
+            HorizontalAlignment = HorizontalAlignment.Right,
+            VerticalAlignment = VerticalAlignment.Bottom,
+            Margin = new Thickness(0, 0, -2, -2),
+        };
+        var icon = new Grid { Width = 16, Height = 16, Children = { Glyph(""), _colorSwatch } };
+        var button = new Button
+        {
+            Content = icon,
+            ToolTip = "Color (C)", // updated with the color name
+            Focusable = false,
+            Margin = ButtonSpacing,
+            Style = (Style)FindResource("Captio.BarButton"),
+        };
+        AutomationProperties.SetName(button, "Color");
+        button.Click += (_, _) => OpenPopup(_colorPopup);
+
+        var grid = new UniformGrid { Columns = 4, Margin = new Thickness(2) };
+        foreach (var color in ShapePalette.Colors)
+        {
+            var swatch = new Ellipse { Width = 18, Height = 18, Fill = new SolidColorBrush(AnnotationRenderer.ToColor(color.Argb)) };
+            var item = PopupItem(swatch, color.Name, () => { SetColor(color.Argb); ClosePopup(); });
+            grid.Children.Add(item);
+            _colorItems.Add((color.Argb, item));
+        }
+        _colorPopup = CreatePopup(grid, button, "Colores");
+        return button;
+    }
+
+    private Popup CreatePopup(UIElement content, UIElement target, string name)
+    {
+        var frame = new Border
+        {
+            Child = content,
+            Padding = new Thickness(4),
+            CornerRadius = new CornerRadius(10),
+            Background = Res("Captio.Bar"),
+            BorderBrush = Res("Captio.BarBorder"),
+            BorderThickness = new Thickness(1),
+        };
+        AutomationProperties.SetName(frame, name);
+        KeyboardNavigation.SetDirectionalNavigation(frame, KeyboardNavigationMode.Cycle);
+        KeyboardNavigation.SetTabNavigation(frame, KeyboardNavigationMode.Cycle);
+
+        var popup = new Popup
+        {
+            Child = frame,
+            PlacementTarget = target,
+            Placement = !_vertical ? PlacementMode.Bottom : _side == ToolbarSide.Left ? PlacementMode.Right : PlacementMode.Left,
+            StaysOpen = false,
+            AllowsTransparency = true,
+            HorizontalOffset = _vertical ? 0 : -4,
+            VerticalOffset = _vertical ? -4 : 6,
+        };
+        popup.Closed += (_, _) =>
+        {
+            _popupClosedAt = Environment.TickCount64;
+            if (_openPopup == popup) _openPopup = null;
+            Keyboard.Focus(this);
+        };
+        return popup;
+    }
+
+    private void OpenPopup(Popup popup)
+    {
+        if (_region is null || _drag != Drag.None) return;
+        // The click that closed the popup (StaysOpen=false) must not reopen it.
+        if (Environment.TickCount64 - _popupClosedAt < 250) return;
+
+        ClosePopup();
+        _openPopup = popup;
+        popup.IsOpen = true;
+
+        var items = popup == _colorPopup ? _colorItems.Select(c => c.Item).ToList() : _shapeItems.Select(s => s.Item).ToList();
+        var current = popup == _colorPopup
+            ? _colorItems.FindIndex(c => c.Argb == _color)
+            : _shapeItems.FindIndex(s => s.Kind == _shape);
+        _popupIndex = Math.Max(0, current);
+        HighlightPopupItem(items);
+    }
+
+    private void ClosePopup()
+    {
+        if (_openPopup is { } popup) popup.IsOpen = false;
+        _openPopup = null;
+    }
+
+    private void MovePopupFocus(List<Button> items, int delta)
+    {
+        _popupIndex = ((_popupIndex + delta) % items.Count + items.Count) % items.Count;
+        HighlightPopupItem(items);
+    }
+
+    private void HighlightPopupItem(List<Button> items)
+    {
+        PaintPopupItems();
+        items[_popupIndex].Background = Res("Captio.Hover");
+        items[_popupIndex].Focus();
+    }
+
+    /// <summary>The current color or shape keeps the "selected" background, with no outline.</summary>
+    private void PaintPopupItems()
+    {
+        foreach (var (argb, item) in _colorItems) item.Background = argb == _color ? Res("Captio.Checked") : Brushes.Transparent;
+        foreach (var (kind, item) in _shapeItems) item.Background = kind == _shape ? Res("Captio.Checked") : Brushes.Transparent;
+    }
+
+    private Button PopupItem(UIElement content, string name, Action choose)
+    {
+        var item = new Button { Content = content, ToolTip = name, Margin = new Thickness(1), Style = (Style)FindResource("Captio.BarButton") };
+        AutomationProperties.SetName(item, name);
+        item.Click += (_, _) => choose();
+        return item;
+    }
+
+    private FrameworkElement ShapeIcon(ShapeKind kind)
+    {
+        FrameworkElement icon = kind switch
+        {
+            ShapeKind.Rectangle => new Rectangle { Width = 16, Height = 12, Stroke = Res("Captio.Text"), StrokeThickness = 1.8 },
+            ShapeKind.Ellipse => new Ellipse { Width = 17, Height = 13, Stroke = Res("Captio.Text"), StrokeThickness = 1.8 },
+            _ => Glyph("", rotate: -45),
+        };
+        return new Grid { Width = 18, Height = 16, Children = { icon } };
+    }
+
+    private static string ShapeName(ShapeKind kind) => ShapeNames.First(s => s.Kind == kind).Name;
+
+    private static TextBlock Glyph(string glyph, double size = 16, double rotate = 0) => new()
     {
         Text = glyph,
         FontFamily = new FontFamily("Segoe Fluent Icons, Segoe MDL2 Assets"),
-        FontSize = 16,
-        Width = 16,
-        Height = 16,
+        FontSize = size,
         TextAlignment = TextAlignment.Center,
+        HorizontalAlignment = HorizontalAlignment.Center,
+        VerticalAlignment = VerticalAlignment.Center,
+        RenderTransformOrigin = new Point(0.5, 0.5),
+        RenderTransform = new RotateTransform(rotate),
     };
 
     private static StackPanel LabeledGlyph(string glyph, string label)
@@ -451,34 +667,55 @@ internal sealed class OverlayWindow : Window
         return panel;
     }
 
-    private ToggleButton AddToggle(Panel panel, UIElement content, string tip, Action action)
+    private ToggleButton AddToggle(Panel panel, UIElement content, string name, string shortcut, Action action)
     {
-        var button = new ToggleButton { Content = content, ToolTip = tip, Focusable = false, Style = (Style)FindResource("Captio.BarToggle") };
+        var button = new ToggleButton { Content = content, ToolTip = $"{name} ({shortcut})", Focusable = false, Margin = ButtonSpacing, Style = (Style)FindResource("Captio.BarToggle") };
+        AutomationProperties.SetName(button, name);
         button.Click += (_, _) => { action(); UpdateToolbarState(); };
         panel.Children.Add(button);
         return button;
     }
 
-    private Button AddButton(Panel panel, UIElement content, string tip, Action action)
+    private Button AddButton(Panel panel, UIElement content, string name, string? shortcut, Action action)
     {
-        var button = new Button { Content = content, ToolTip = tip, Focusable = false, Style = (Style)FindResource("Captio.BarButton") };
+        var button = new Button
+        {
+            Content = content,
+            ToolTip = shortcut is null ? name : $"{name} ({shortcut})",
+            Focusable = false,
+            Margin = ButtonSpacing,
+            Style = (Style)FindResource("Captio.BarButton"),
+        };
+        AutomationProperties.SetName(button, name);
         button.Click += (_, _) => action();
         panel.Children.Add(button);
         return button;
     }
 
-    private Border Separator() => new()
-    {
-        Width = 1,
-        Margin = new Thickness(6, 6, 6, 6),
-        Background = (Brush)FindResource("Captio.BarBorder"),
-    };
+    private Border Separator() => _vertical
+        ? new Border { Height = 1, Margin = new Thickness(5, 4, 5, 4), Background = Res("Captio.BarBorder") }
+        : new Border { Width = 1, Margin = new Thickness(4, 5, 4, 5), Background = Res("Captio.BarBorder") };
+
+    /// <summary>1 DIP on each side along the bar only, so the gap between buttons never widens the bar.</summary>
+    private Thickness ButtonSpacing => _vertical ? new Thickness(0, 1, 0, 1) : new Thickness(1, 0, 1, 0);
+
+    private Brush Res(string key) => (Brush)FindResource(key);
 
     private void UpdateToolbarState()
     {
         foreach (var (tool, button) in _toolButtons) button.IsChecked = tool == _tool;
-        foreach (var (argb, button) in _colorButtons) button.IsChecked = argb == _color;
-        foreach (var (value, button) in _thicknessButtons) button.IsChecked = value == _thickness;
+        _shapeButton.Content = ShapeIcon(_shape);
+        _shapeButton.ToolTip = $"Forma: {ShapeName(_shape)}. Clic para elegir (F usa la actual)";
+        AutomationProperties.SetName(_shapeButton, ShapeName(_shape));
+        _colorSwatch.Fill = new SolidColorBrush(AnnotationRenderer.ToColor(_color));
+        var colorName = ShapePalette.Find(_color)?.Name ?? "Color";
+        if (((FrameworkElement)_colorSwatch.Parent).Parent is Button colorButton)
+        {
+            AutomationProperties.SetName(colorButton, $"Color: {colorName}");
+            colorButton.ToolTip = $"Color: {colorName} (C)";
+        }
+        foreach (var (kind, item) in _shapeItems) item.FontWeight = kind == _shape ? FontWeights.SemiBold : FontWeights.Normal;
+        if (_openPopup is null) PaintPopupItems();
         _undoButton.IsEnabled = Document.CanUndo;
         _redoButton.IsEnabled = Document.CanRedo;
         _deleteButton.IsEnabled = _selected >= 0;
@@ -487,22 +724,13 @@ internal sealed class OverlayWindow : Window
     private void PositionToolbar()
     {
         if (_region is not { } r) return;
-        var s = Scale;
         _toolbar.Measure(new Size(double.PositiveInfinity, double.PositiveInfinity));
         var size = _toolbar.DesiredSize;
-        var width = ActualWidth;
-        var height = ActualHeight;
-        const double gap = 10;
-
-        var left = Math.Clamp((r.X + r.Width) / s - size.Width, gap, Math.Max(gap, width - size.Width - gap));
-        var below = (r.Y + r.Height) / s + gap;
-        var above = r.Y / s - gap - size.Height;
-        var top = below + size.Height <= height - gap ? below
-            : above >= gap ? above
-            : (r.Y + r.Height) / s - size.Height - gap;
-
-        Canvas.SetLeft(_toolbar, left);
-        Canvas.SetTop(_toolbar, top);
+        var position = ToolbarPlacement.PlaceOnMonitor(
+            new Bounds(r.X, r.Y, r.Width, r.Height), size.Width, size.Height,
+            new Bounds(0, 0, Snapshot.Bounds.Width, Snapshot.Bounds.Height), _side, Scale);
+        Canvas.SetLeft(_toolbar, position.X);
+        Canvas.SetTop(_toolbar, position.Y);
     }
 
     // ---- Rendering ----------------------------------------------------------------------------
@@ -544,7 +772,7 @@ internal sealed class OverlayWindow : Window
                 var item = i == owner._selected && owner._drag == Drag.MoveAnnotation ? owner._preview ?? items[i] : items[i];
                 AnnotationRenderer.Draw(dc, item);
             }
-            if (owner._preview is { } preview && owner._drag is Drag.DrawArrow or Drag.DrawRedaction) AnnotationRenderer.Draw(dc, preview);
+            if (owner._preview is { } preview && owner._drag is Drag.DrawShape or Drag.DrawRedaction) AnnotationRenderer.Draw(dc, preview);
             dc.Pop();
 
             dc.DrawGeometry(Dim, null, new CombinedGeometry(GeometryCombineMode.Exclude, new RectangleGeometry(full), new RectangleGeometry(r)));
@@ -555,7 +783,8 @@ internal sealed class OverlayWindow : Window
 
             if (owner._selected >= 0 && owner._selected < items.Count && owner._drag != Drag.MoveAnnotation)
             {
-                var bound = BoundsOf(items[owner._selected]);
+                var b = ShapeFactory.BoundsOf(items[owner._selected]);
+                var bound = new Rect(b.X, b.Y, b.Width, b.Height);
                 bound.Inflate(4 * s, 4 * s);
                 var selectionPen = SelectionPen.Clone();
                 selectionPen.Thickness = 1.5 * s;
@@ -590,12 +819,5 @@ internal sealed class OverlayWindow : Window
             dc.DrawRoundedRectangle((Brush)owner.FindResource("Captio.Bar"), null, box, 6 * s, 6 * s);
             dc.DrawText(text, new Point(box.X + pad, box.Y + pad / 2));
         }
-
-        private static Rect BoundsOf(Annotation annotation) => annotation switch
-        {
-            ArrowAnnotation a => new Rect(new Point(a.X1, a.Y1), new Point(a.X2, a.Y2)),
-            RedactionAnnotation r => new Rect(r.X, r.Y, r.Width, r.Height),
-            _ => Rect.Empty,
-        };
     }
 }
