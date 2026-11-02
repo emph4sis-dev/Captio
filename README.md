@@ -123,11 +123,6 @@ docs/             Especificación (SPEC.md), sistema visual (DESIGN.md) e imáge
 
 El comportamiento completo, los casos límite y los criterios de aceptación están en [docs/SPEC.md](docs/SPEC.md).
 
-## Hoja de ruta
-
-- **Clips de video MP4** sin audio. Planificado; aún no disponible.
-- **Firma digital del instalador**, para que SmartScreen deje de avisar.
-
 ## Contribuir
 
 Las contribuciones son bienvenidas: lee [CONTRIBUTING.md](CONTRIBUTING.md). Para informar de una vulnerabilidad, sigue [SECURITY.md](SECURITY.md) y no abras un issue público.
